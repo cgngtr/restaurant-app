@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Menu } from '@/components/menu/menu'
 import { Database } from '@/types/supabase'
-import { RestaurantHeader } from '@/components/restaurant/restaurant-header'
 
 type MenuItem = Database['public']['Tables']['menu_items']['Row']
 type MenuCategory = Database['public']['Tables']['menu_categories']['Row']
@@ -62,30 +61,26 @@ async function getRestaurantData(slug: string, tableNumber: string): Promise<Res
   return restaurant
 }
 
-export default async function TablePage({
-  params: { restaurant, table },
-}: {
-  params: { restaurant: string; table: string }
-}) {
-  const restaurantData = await getRestaurantData(restaurant, table)
+interface PageProps {
+  params: {
+    restaurant: string
+    table: string
+  }
+}
 
-  if (!restaurantData) {
+export default async function RestaurantTablePage({ params }: PageProps) {
+  const restaurant = await getRestaurantData(params.restaurant, params.table)
+
+  if (!restaurant) {
     notFound()
   }
 
   return (
-    <div className="space-y-8">
-      <RestaurantHeader
-        name={restaurantData.name}
-        logoUrl={restaurantData.logo_url}
-        tableNumber={table}
-      />
+    <main className="container mx-auto px-4 py-8">
       <Menu
-        categories={restaurantData.menu_categories}
-        items={restaurantData.menu_items}
-        restaurantId={restaurantData.id}
-        tableNumber={table}
+        categories={restaurant.menu_categories}
+        items={restaurant.menu_items}
       />
-    </div>
+    </main>
   )
 } 

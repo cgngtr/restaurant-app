@@ -9,11 +9,9 @@ type MenuCategoryType = Database['public']['Tables']['menu_categories']['Row']
 interface MenuProps {
   categories: MenuCategoryType[]
   items: MenuItem[]
-  restaurantId: string
-  tableNumber: string
 }
 
-export function Menu({ categories, items, restaurantId, tableNumber }: MenuProps) {
+export function Menu({ categories, items }: MenuProps) {
   // Sort categories by sort_order
   const sortedCategories = [...categories].sort((a, b) => a.sort_order - b.sort_order)
 
@@ -33,8 +31,6 @@ export function Menu({ categories, items, restaurantId, tableNumber }: MenuProps
             key={category.id}
             category={category}
             items={categoryItems}
-            restaurantId={restaurantId}
-            tableNumber={tableNumber}
           />
         )
       })}

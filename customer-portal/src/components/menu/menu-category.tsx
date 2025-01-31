@@ -1,3 +1,5 @@
+'use client'
+
 import Image from 'next/image'
 import { Database } from '@/types/supabase'
 import { Card } from '@/components/ui/card'
@@ -5,7 +7,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useCartStore } from '@/store/cart-store'
+import { formatCurrency } from '@/lib/utils'
 
 type MenuItem = Database['public']['Tables']['menu_items']['Row']
 type MenuCategory = Database['public']['Tables']['menu_categories']['Row']
@@ -13,37 +16,26 @@ type MenuCategory = Database['public']['Tables']['menu_categories']['Row']
 interface MenuCategoryProps {
   category: MenuCategory
   items: MenuItem[]
-  restaurantId: string
-  tableNumber: string
 }
 
-export function MenuCategory({ category, items, restaurantId, tableNumber }: MenuCategoryProps) {
+export function MenuCategory({ category, items }: MenuCategoryProps) {
   const { toast } = useToast()
   const [loading, setLoading] = useState<Record<string, boolean>>({})
+  const addItem = useCartStore((state) => state.addItem)
 
-  const addToOrder = async (item: MenuItem) => {
+  const handleAddToCart = async (item: MenuItem) => {
     setLoading((prev) => ({ ...prev, [item.id]: true }))
 
     try {
-      const { error } = await supabase.from('order_items').insert({
-        restaurant_id: restaurantId,
-        table_number: tableNumber,
-        menu_item_id: item.id,
-        quantity: 1,
-        status: 'pending',
-        special_instructions: '',
-      })
-
-      if (error) throw error
-
+      addItem(item)
       toast({
-        title: 'Added to order',
-        description: `${item.name} has been added to your order.`,
+        title: 'Added to cart',
+        description: `${item.name} has been added to your cart.`,
       })
-    } catch {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to add item to order. Please try again.',
+        description: 'Failed to add item to cart. Please try again.',
         variant: 'destructive',
       })
     } finally {
@@ -74,7 +66,7 @@ export function MenuCategory({ category, items, restaurantId, tableNumber }: Men
                   <p className="text-sm text-muted-foreground">{item.description}</p>
                 </div>
                 <span className="font-medium">
-                  ${item.price.toFixed(2)}
+                  {formatCurrency(item.price)}
                 </span>
               </div>
 
@@ -89,14 +81,14 @@ export function MenuCategory({ category, items, restaurantId, tableNumber }: Men
               )}
 
               <Button
-                onClick={() => addToOrder(item)}
+                onClick={() => handleAddToCart(item)}
                 className="mt-4 w-full"
                 disabled={!item.is_available || loading[item.id]}
               >
                 {loading[item.id]
                   ? 'Adding...'
                   : item.is_available
-                  ? 'Add to Order'
+                  ? 'Add to Cart'
                   : 'Out of Stock'}
               </Button>
             </div>
