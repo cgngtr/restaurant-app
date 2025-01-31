@@ -37,7 +37,7 @@ VALUES
     'Crispy Calamari',
     'Fresh calamari rings served with tartar sauce',
     12.99,
-    'https://picsum.photos/400/300',
+    'https://images.unsplash.com/photo-1604909052743-94e838986d24?q=80&w=800&h=600&fit=crop',
     true,
     ARRAY['seafood'],
     NOW()
@@ -49,7 +49,7 @@ VALUES
     'Garden Salad',
     'Mixed greens with cherry tomatoes and balsamic dressing',
     9.99,
-    'https://picsum.photos/400/300',
+    'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=800&h=600&fit=crop',
     true,
     ARRAY['vegetarian', 'vegan', 'gluten-free'],
     NOW()
@@ -61,7 +61,7 @@ VALUES
     'Grilled Chicken',
     'Herb-marinated chicken breast with roasted vegetables',
     24.99,
-    'https://picsum.photos/400/300',
+    'https://images.unsplash.com/photo-1532550907401-a500c9a57435?q=80&w=800&h=600&fit=crop',
     true,
     ARRAY['gluten-free'],
     NOW()
@@ -73,7 +73,7 @@ VALUES
     'Vegetable Curry',
     'Mixed vegetables in a rich coconut curry sauce',
     18.99,
-    'https://picsum.photos/400/300',
+    'https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?q=80&w=800&h=600&fit=crop',
     true,
     ARRAY['vegetarian', 'vegan', 'spicy'],
     NOW()
@@ -85,7 +85,7 @@ VALUES
     'Chocolate Lava Cake',
     'Warm chocolate cake with a molten center',
     8.99,
-    'https://picsum.photos/400/300',
+    'https://images.unsplash.com/photo-1624353365286-3f8d62daad51?q=80&w=800&h=600&fit=crop',
     true,
     ARRAY['vegetarian'],
     NOW()
@@ -97,7 +97,7 @@ VALUES
     'Fresh Lemonade',
     'House-made lemonade with mint',
     4.99,
-    'https://picsum.photos/400/300',
+    'https://images.unsplash.com/photo-1621263764928-df1444c5e859?q=80&w=800&h=600&fit=crop',
     true,
     ARRAY['vegan', 'gluten-free'],
     NOW()

@@ -2,22 +2,16 @@ import { notFound } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Menu } from '@/components/menu/menu'
 import { Database } from '@/types/supabase'
+import { RestaurantHeader } from '@/components/restaurant/restaurant-header'
 
 type MenuItem = Database['public']['Tables']['menu_items']['Row']
 type MenuCategory = Database['public']['Tables']['menu_categories']['Row']
-
-interface PageProps {
-  params: {
-    restaurant: string
-    table: string
-  }
-  searchParams: { [key: string]: string | string[] | undefined }
-}
 
 interface RestaurantData {
   id: string
   name: string
   logo_url: string | null
+  slug: string
   tables: Array<{
     id: string
     table_number: string
@@ -34,6 +28,7 @@ async function getRestaurantData(slug: string, tableNumber: string): Promise<Res
       id,
       name,
       logo_url,
+      slug,
       tables!inner (
         id,
         table_number,
@@ -67,48 +62,30 @@ async function getRestaurantData(slug: string, tableNumber: string): Promise<Res
   return restaurant
 }
 
-export default async function TablePage({ params, searchParams }: PageProps) {
-  const restaurantData = await getRestaurantData(
-    params.restaurant,
-    params.table
-  )
+export default async function TablePage({
+  params: { restaurant, table },
+}: {
+  params: { restaurant: string; table: string }
+}) {
+  const restaurantData = await getRestaurantData(restaurant, table)
 
   if (!restaurantData) {
     notFound()
   }
 
-  // Sort categories by sort_order
-  const sortedCategories = [...(restaurantData.menu_categories || [])].sort(
-    (a, b) => (a.sort_order || 0) - (b.sort_order || 0)
-  )
-
   return (
-    <main className="container mx-auto px-4 py-6">
-      <header className="mb-8">
-        <h1 className="text-2xl font-bold">
-          {restaurantData.name} - Table {params.table}
-        </h1>
-      </header>
-      
-      <div className="grid gap-6">
-        <section>
-          <h2 className="text-xl font-semibold mb-4">Menu</h2>
-          <Menu
-            restaurantId={restaurantData.id}
-            categories={sortedCategories}
-            items={restaurantData.menu_items || []}
-            onAddToCart={(item) => {
-              // Cart functionality will be added later
-              console.log('Add to cart:', item)
-            }}
-          />
-        </section>
-        
-        <section>
-          <h2 className="text-xl font-semibold mb-4">Your Order</h2>
-          {/* Order component will be added next */}
-        </section>
-      </div>
-    </main>
+    <div className="space-y-8">
+      <RestaurantHeader
+        name={restaurantData.name}
+        logoUrl={restaurantData.logo_url}
+        tableNumber={table}
+      />
+      <Menu
+        categories={restaurantData.menu_categories}
+        items={restaurantData.menu_items}
+        restaurantId={restaurantData.id}
+        tableNumber={table}
+      />
+    </div>
   )
 } 

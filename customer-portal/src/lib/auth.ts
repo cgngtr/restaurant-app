@@ -1,10 +1,30 @@
-import { getServerSession } from 'next-auth/next'
-import { config } from '@/app/api/auth/[...nextauth]/route'
+import { getToken } from 'next-auth/jwt'
+import { cookies } from 'next/headers'
 import { supabase } from './supabase'
 import type { Session } from 'next-auth'
+import type { IncomingMessage } from 'http'
 
 export async function getSession(): Promise<Session | null> {
-  return await getServerSession(config)
+  const token = await getToken({ 
+    req: {
+      headers: {
+        cookie: cookies().toString()
+      }
+    },
+    secret: process.env.NEXTAUTH_SECRET
+  })
+
+  if (!token) return null
+
+  return {
+    user: {
+      id: token.sub!,
+      name: token.name,
+      email: token.email,
+      image: token.picture,
+    },
+    expires: new Date(token.exp! * 1000).toISOString()
+  }
 }
 
 export async function getCurrentUser() {

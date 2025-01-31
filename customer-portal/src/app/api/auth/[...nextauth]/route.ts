@@ -2,13 +2,12 @@ import NextAuth from 'next-auth'
 import { SupabaseAdapter } from '@auth/supabase-adapter'
 import { Adapter } from '@auth/core/adapters'
 import Google from 'next-auth/providers/google'
-import type { NextAuthConfig } from 'next-auth'
 
 if (!process.env.NEXTAUTH_SECRET) {
   throw new Error('Please provide process.env.NEXTAUTH_SECRET')
 }
 
-export const config = {
+const handler = NextAuth({
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -38,7 +37,6 @@ export const config = {
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
-} satisfies NextAuthConfig
+})
 
-const handler = NextAuth(config)
 export { handler as GET, handler as POST } 
