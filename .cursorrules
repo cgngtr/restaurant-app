@@ -1,0 +1,49 @@
+{
+  "projectName": "QR Order App",
+  "developmentRules": {
+    "primaryDomains": {
+      "customer": "customer.qrorderapp.com",
+      "admin": "admin.qrorderapp.com"
+    },
+    "urlStructure": "/{restaurant-id}/{table-number}",
+    "noCodeStack": {
+      "frontend": "Bubble.io",
+      "backend": "Supabase",
+      "qrGeneration": "QRCode-generator",
+      "hosting": {
+        "customer": "Vercel",
+        "admin": "AWS Amplify"
+      }
+    }
+  },
+  "featureRequirements": {
+    "customerInterface": [
+      "Dynamic landing page",
+      "Real-time menu with stock status",
+      "Dietary filters",
+      "Order status tracking"
+    ],
+    "adminInterface": [
+      "Table status management",
+      "Order tracking",
+      "Menu management with CSV import"
+    ]
+  },
+  "securityModel": {
+    "dataIsolation": "Supabase Row-Level Security",
+    "authentication": "Magic link for restaurant owners",
+    "qrSecurity": {
+      "checksumValidation": true,
+      "rateLimiting": "5 scans/second per IP"
+    }
+  },
+  "deploymentPriorities": [
+    "Mobile PWA optimization",
+    "Real-time table status sync",
+    "Comprehensive error handling"
+  ],
+  "monetizationModel": {
+    "basePrice": "$49/month per restaurant",
+    "customSubdomainPrice": "$10/month"
+  }
+}
