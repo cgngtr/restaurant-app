@@ -1,17 +1,19 @@
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { config } from '@/app/api/auth/[...nextauth]/route'
+import { supabase } from './supabase'
+import type { Session } from 'next-auth'
 
-export async function getSession() {
-  return await getServerSession(authOptions)
+export async function getSession(): Promise<Session | null> {
+  return await getServerSession(config)
 }
 
 export async function getCurrentUser() {
   const session = await getSession()
-  return session?.user
+  return session?.user || null
 }
 
 // No authentication required for customer portal, but we'll track sessions
-export async function getSessionId() {
+export async function getUserId(): Promise<string | null> {
   const session = await getSession()
   return session?.user?.id || null
 }
@@ -29,4 +31,14 @@ export async function getActiveOrder(restaurantId: string, tableId: string) {
     .single()
 
   return order
+}
+
+export async function getUserOrders(userId: string) {
+  const { data: orders } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  return orders
 } 

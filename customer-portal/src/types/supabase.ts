@@ -12,35 +12,26 @@ export interface Database {
       restaurants: {
         Row: {
           id: string
+          created_at: string
           name: string
           slug: string
           logo_url: string | null
-          address: string | null
-          contact_email: string
-          contact_phone: string | null
-          created_at: string
           active: boolean
         }
         Insert: {
           id?: string
+          created_at?: string
           name: string
           slug: string
           logo_url?: string | null
-          address?: string | null
-          contact_email: string
-          contact_phone?: string | null
-          created_at?: string
           active?: boolean
         }
         Update: {
           id?: string
+          created_at?: string
           name?: string
           slug?: string
           logo_url?: string | null
-          address?: string | null
-          contact_email?: string
-          contact_phone?: string | null
-          created_at?: string
           active?: boolean
         }
       }
@@ -50,7 +41,6 @@ export interface Database {
           restaurant_id: string
           table_number: string
           status: 'available' | 'occupied' | 'reserved'
-          qr_code_url: string | null
           created_at: string
         }
         Insert: {
@@ -58,7 +48,6 @@ export interface Database {
           restaurant_id: string
           table_number: string
           status?: 'available' | 'occupied' | 'reserved'
-          qr_code_url?: string | null
           created_at?: string
         }
         Update: {
@@ -66,7 +55,6 @@ export interface Database {
           restaurant_id?: string
           table_number?: string
           status?: 'available' | 'occupied' | 'reserved'
-          qr_code_url?: string | null
           created_at?: string
         }
       }
@@ -102,11 +90,11 @@ export interface Database {
           restaurant_id: string
           category_id: string
           name: string
-          description: string | null
+          description: string
           price: number
           image_url: string | null
           is_available: boolean
-          dietary_flags: Json
+          dietary_flags: string[]
           created_at: string
         }
         Insert: {
@@ -114,11 +102,11 @@ export interface Database {
           restaurant_id: string
           category_id: string
           name: string
-          description?: string | null
+          description: string
           price: number
           image_url?: string | null
           is_available?: boolean
-          dietary_flags?: Json
+          dietary_flags?: string[]
           created_at?: string
         }
         Update: {
@@ -126,11 +114,11 @@ export interface Database {
           restaurant_id?: string
           category_id?: string
           name?: string
-          description?: string | null
+          description?: string
           price?: number
           image_url?: string | null
           is_available?: boolean
-          dietary_flags?: Json
+          dietary_flags?: string[]
           created_at?: string
         }
       }
