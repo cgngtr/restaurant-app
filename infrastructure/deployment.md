@@ -32,21 +32,12 @@ admin.qrorderapp.com:
 ```json
 {
     "version": 2,
-    "builds": [
-        {
-            "src": "bubble-exports/customer/**",
-            "use": "@vercel/static"
-        }
-    ],
-    "routes": [
-        {
-            "src": "/(.*)",
-            "dest": "/bubble-exports/customer/$1"
-        }
-    ],
+    "framework": "nextjs",
+    "buildCommand": "npm run build",
+    "outputDirectory": ".next",
     "env": {
-        "SUPABASE_URL": "@supabase_url",
-        "SUPABASE_ANON_KEY": "@supabase_anon_key"
+        "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key"
     }
 }
 ```
@@ -56,15 +47,20 @@ admin.qrorderapp.com:
 version: 1
 frontend:
   phases:
+    preBuild:
+      commands:
+        - npm ci
     build:
       commands:
-        - echo "No build required for Bubble.io export"
+        - npm run build
   artifacts:
-    baseDirectory: bubble-exports/admin
+    baseDirectory: .next
     files:
       - '**/*'
   cache:
-    paths: []
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*
 ```
 
 ## Database Configuration (Supabase)
@@ -102,11 +98,8 @@ ssl_config:
 ```yaml
 rate_limiting:
   rules:
-    - endpoint: "/*"
-      rate: 100
-      per: 60
     - endpoint: "/api/*"
-      rate: 50
+      rate: 100
       per: 60
 ```
 
@@ -118,12 +111,12 @@ monitoring:
   services:
     - name: customer_portal
       endpoints:
-        - https://customer.qrorderapp.com/health
+        - https://customer.qrorderapp.com/api/health
       interval: 60
       timeout: 5
     - name: admin_portal
       endpoints:
-        - https://admin.qrorderapp.com/health
+        - https://admin.qrorderapp.com/api/health
       interval: 60
       timeout: 5
 ```
@@ -139,52 +132,6 @@ logging:
       table: system_logs
 ```
 
-## Scaling Configuration
-
-### Vercel (Customer Portal)
-```json
-{
-    "functions": {
-        "maxDuration": 10,
-        "memory": 1024
-    },
-    "regions": ["iad1", "sfo1", "hnd1"]
-}
-```
-
-### AWS Amplify (Admin Portal)
-```yaml
-scaling:
-  auto_scaling:
-    min_capacity: 1
-    max_capacity: 10
-    target_utilization: 70
-```
-
-## Backup & Recovery
-
-### Database Backups
-```yaml
-backup_strategy:
-  full_backup:
-    frequency: daily
-    time: "00:00"
-    retention: 30d
-  point_in_time:
-    enabled: true
-    retention: 7d
-```
-
-### Disaster Recovery
-```yaml
-disaster_recovery:
-  rpo: 24h  # Recovery Point Objective
-  rto: 4h   # Recovery Time Objective
-  regions:
-    primary: us-east-1
-    secondary: us-west-2
-```
-
 ## CI/CD Pipeline
 
 ### GitHub Actions
@@ -194,17 +141,43 @@ on:
   push:
     branches: [main]
 jobs:
-  deploy:
+  deploy-customer:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./customer-portal
     steps:
-      - uses: actions/checkout@v2
-      - name: Deploy Customer Portal
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run tests
+        run: npm test
+      - name: Deploy to Vercel
         uses: vercel/actions/cli@v2
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.ORG_ID}}
           vercel-project-id: ${{ secrets.PROJECT_ID }}
-      - name: Deploy Admin Portal
+          working-directory: ./customer-portal
+
+  deploy-admin:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./admin-portal
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run tests
+        run: npm test
+      - name: Deploy to AWS Amplify
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -216,18 +189,26 @@ jobs:
 
 ### Production
 ```env
+# Next.js
 NODE_ENV=production
-SUPABASE_URL=https://[project_ref].supabase.co
-SUPABASE_ANON_KEY=[anon_key]
+NEXT_PUBLIC_SUPABASE_URL=https://[project_ref].supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=[anon_key]
+NEXT_PUBLIC_API_URL=https://api.qrorderapp.com
+
+# AWS
 AWS_REGION=us-east-1
 CLOUDFLARE_TOKEN=[cf_token]
 ```
 
 ### Staging
 ```env
+# Next.js
 NODE_ENV=staging
-SUPABASE_URL=https://[staging_ref].supabase.co
-SUPABASE_ANON_KEY=[staging_anon_key]
+NEXT_PUBLIC_SUPABASE_URL=https://[staging_ref].supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=[staging_anon_key]
+NEXT_PUBLIC_API_URL=https://api.staging.qrorderapp.com
+
+# AWS
 AWS_REGION=us-east-1
 CLOUDFLARE_TOKEN=[cf_staging_token]
 ``` 

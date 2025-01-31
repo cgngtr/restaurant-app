@@ -1,6 +1,6 @@
 # QR-Based Restaurant Ordering System
 
-A no-code SaaS application for restaurants to manage orders through QR codes.
+A modern SaaS application for restaurants to manage orders through QR codes.
 
 ## 🌟 Features
 
@@ -14,14 +14,17 @@ A no-code SaaS application for restaurants to manage orders through QR codes.
 ## 🏗️ Architecture
 
 ### Frontend
-- Customer Portal: Bubble.io (PWA)
-- Admin Portal: Bubble.io
+- Customer Portal: Next.js (React) + TypeScript
+- Admin Portal: Next.js (React) + TypeScript
+- State Management: React Query + Zustand
+- Styling: Tailwind CSS + Shadcn UI
 - Hosting: Vercel (Customer) + AWS Amplify (Admin)
 
 ### Backend
-- Database: Supabase
-- Authentication: Magic Links (Admin)
+- Database: Supabase (PostgreSQL)
+- Authentication: Supabase Auth
 - File Storage: Supabase Storage
+- Real-time: Supabase Realtime
 
 ### Domains
 - Customer: `customer.qrorderapp.com/[restaurant-id]/[table-number]`
@@ -30,7 +33,7 @@ A no-code SaaS application for restaurants to manage orders through QR codes.
 ## 🚀 Getting Started
 
 ### Prerequisites
-1. Bubble.io account
+1. Node.js 18+ and npm/yarn
 2. Supabase account
 3. Vercel account
 4. AWS account (for Amplify)
@@ -39,19 +42,52 @@ A no-code SaaS application for restaurants to manage orders through QR codes.
 ### Development Setup
 1. Clone this repository
 2. Set up environment variables (see `.env.example`)
-3. Initialize Supabase project
-4. Configure Bubble.io workspace
-5. Set up deployment pipelines
+3. Install dependencies:
+   ```bash
+   # Customer Portal
+   cd customer-portal
+   npm install
+
+   # Admin Portal
+   cd admin-portal
+   npm install
+   ```
+4. Run development servers:
+   ```bash
+   # Customer Portal
+   npm run dev
+
+   # Admin Portal
+   npm run dev
+   ```
 
 ## 📁 Project Structure
 
 ```
+├── customer-portal/          # Customer-facing Next.js application
+│   ├── src/
+│   │   ├── app/             # Next.js 13+ App Router
+│   │   ├── components/      # React components
+│   │   ├── lib/            # Utilities and helpers
+│   │   └── styles/         # Global styles
+│   ├── public/             # Static assets
+│   └── package.json
+│
+├── admin-portal/            # Admin Next.js application
+│   ├── src/
+│   │   ├── app/            # Next.js 13+ App Router
+│   │   ├── components/     # React components
+│   │   ├── lib/           # Utilities and helpers
+│   │   └── styles/        # Global styles
+│   ├── public/            # Static assets
+│   └── package.json
+│
+├── supabase/              # Database configurations
+│   ├── migrations/        # Database migrations
+│   └── functions/        # Database functions
+│
 ├── docs/                 # Documentation
-├── supabase/            # Supabase configurations and migrations
-├── bubble-exports/      # Bubble.io exported configurations
-│   ├── customer/        # Customer portal exports
-│   └── admin/          # Admin portal exports
-└── infrastructure/     # Infrastructure as Code (if needed)
+└── infrastructure/      # Infrastructure configurations
 ```
 
 ## 🔐 Security

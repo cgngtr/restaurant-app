@@ -6,8 +6,13 @@
       "admin": "admin.qrorderapp.com"
     },
     "urlStructure": "/{restaurant-id}/{table-number}",
-    "noCodeStack": {
-      "frontend": "Bubble.io",
+    "stack": {
+      "frontend": {
+        "framework": "Next.js",
+        "language": "TypeScript",
+        "styling": "Tailwind CSS + Shadcn UI",
+        "stateManagement": "React Query + Zustand"
+      },
       "backend": "Supabase",
       "qrGeneration": "QRCode-generator",
       "hosting": {
@@ -31,7 +36,7 @@
   },
   "securityModel": {
     "dataIsolation": "Supabase Row-Level Security",
-    "authentication": "Magic link for restaurant owners",
+    "authentication": "Supabase Auth + NextAuth.js",
     "qrSecurity": {
       "checksumValidation": true,
       "rateLimiting": "5 scans/second per IP"
