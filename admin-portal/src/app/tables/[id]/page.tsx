@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/use-toast'
-import { ArrowLeft, Download, RefreshCw, Check, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Download, RefreshCw, Check, AlertCircle, Plus } from 'lucide-react'
 import Link from 'next/link'
 import QRCode from 'qrcode'
 import {
@@ -21,6 +21,7 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/components/ui/alert"
+import NewOrderModal from '@/components/orders/NewOrderModal'
 
 interface TableDetails {
   id: string
@@ -45,6 +46,7 @@ interface TableDetails {
     total_revenue: number
     average_order_value: number
   }
+  restaurant_id: string
 }
 
 export default function TableDetailsPage() {
@@ -53,6 +55,8 @@ export default function TableDetailsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isRegeneratingQR, setIsRegeneratingQR] = useState(false)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false)
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false)
 
   const fetchTableDetails = async () => {
     try {
@@ -285,6 +289,63 @@ export default function TableDetailsPage() {
     setIsUpdatingStatus(false)
   }
 
+  const handleCreateOrder = async (items: Array<{ menuItemId: string; quantity: number; notes?: string }>) => {
+    if (!table) return
+    
+    setIsCreatingOrder(true)
+    try {
+      // Create the order
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          restaurant_id: table.restaurant_id,
+          table_id: table.id,
+          status: 'pending',
+          total_amount: 0, // Will be calculated by trigger
+        })
+        .select()
+        .single()
+
+      if (orderError) throw orderError
+
+      // Create order items
+      const orderItems = items.map(item => ({
+        order_id: order.id,
+        menu_item_id: item.menuItemId,
+        quantity: item.quantity,
+        notes: item.notes,
+      }))
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems)
+
+      if (itemsError) throw itemsError
+
+      // Update table status if not already occupied
+      if (table.status === 'available') {
+        await updateTableStatus('occupied')
+      }
+
+      // Refresh table details
+      await fetchTableDetails()
+      
+      setIsOrderModalOpen(false)
+      toast({
+        title: 'Success',
+        description: 'Order created successfully',
+      })
+    } catch (error) {
+      console.error('Error creating order:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to create order',
+        variant: 'destructive',
+      })
+    }
+    setIsCreatingOrder(false)
+  }
+
   if (isLoading || !table) {
     return (
       <div className="container mx-auto p-4">
@@ -312,7 +373,16 @@ export default function TableDetailsPage() {
         <div className="space-y-6">
           {/* Status Management Card */}
           <Card className="p-6">
-            <h2 className="text-lg font-semibold mb-4">Table Status</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">Table Status</h2>
+              <Button
+                onClick={() => setIsOrderModalOpen(true)}
+                disabled={table.status === 'reserved'}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                New Order
+              </Button>
+            </div>
             
             {/* Show alert when table is occupied and has active order */}
             {table.status === 'occupied' && table.orders.some(order => 
@@ -469,6 +539,15 @@ export default function TableDetailsPage() {
           </div>
         </Card>
       </div>
+
+      {isOrderModalOpen && (
+        <NewOrderModal
+          table={table}
+          onClose={() => setIsOrderModalOpen(false)}
+          onSubmit={handleCreateOrder}
+          isLoading={isCreatingOrder}
+        />
+      )}
     </div>
   )
 } 
