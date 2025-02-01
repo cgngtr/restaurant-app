@@ -120,9 +120,9 @@ export default function CheckoutPage() {
 
       console.log('Order items created:', orderItems);
 
-      // Clear cart and navigate to success page
+      // Clear cart and navigate to order status page
       clearCart()
-      window.location.href = `/${restaurantSlug}/${tableNumber}/checkout/success`
+      window.location.href = `/${restaurantSlug}/${tableNumber}/orders/${orderId}`
     } catch (error) {
       console.error('Error submitting order:', error);
       setIsSubmitting(false)
