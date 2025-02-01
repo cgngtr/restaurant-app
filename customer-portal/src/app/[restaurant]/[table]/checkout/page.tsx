@@ -4,35 +4,135 @@ import { useCartStore } from '@/store/cart-store'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { formatCurrency } from '@/lib/utils'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { ArrowLeft } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 export default function CheckoutPage() {
   const { items, getTotal, clearCart } = useCartStore()
   const [orderNotes, setOrderNotes] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [restaurantData, setRestaurantData] = useState<{ id: string } | null>(null)
+  const [restaurantSlug, setRestaurantSlug] = useState<string>('')
+  const [tableNumber, setTableNumber] = useState<string>('')
+
+  // Get URL parameters after component mounts
+  useEffect(() => {
+    const pathParts = window.location.pathname.split('/')
+    setRestaurantSlug(pathParts[1])
+    setTableNumber(pathParts[2])
+  }, [])
+
+  // Fetch restaurant data when restaurantSlug is available
+  useEffect(() => {
+    if (!restaurantSlug) return;
+
+    const fetchRestaurant = async () => {
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('id')
+        .eq('slug', restaurantSlug)
+        .single();
+
+      if (error) {
+        console.error('Error fetching restaurant:', error);
+        return;
+      }
+
+      console.log('Restaurant data:', data);
+      setRestaurantData(data);
+    };
+
+    fetchRestaurant();
+  }, [restaurantSlug]);
+
+  const generateOrderId = () => {
+    const timestamp = Date.now().toString(36)
+    const randomStr = Math.random().toString(36).substring(2, 8)
+    return `order_${timestamp}${randomStr}`
+  }
 
   const handleSubmitOrder = async () => {
+    if (!restaurantData || !restaurantSlug || !tableNumber) {
+      console.error('Required data not available');
+      return;
+    }
+
     setIsSubmitting(true)
     
     try {
-      // Simulate order submission
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
+      // First, get the table ID
+      const { data: tableData, error: tableError } = await supabase
+        .from('tables')
+        .select('id')
+        .eq('restaurant_id', restaurantData.id)
+        .eq('table_number', tableNumber)
+        .single();
+
+      if (tableError) {
+        console.error('Error fetching table:', tableError);
+        throw tableError;
+      }
+
+      console.log('Table data:', tableData);
+
+      // Create order with generated ID
+      const orderId = generateOrderId()
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          id: orderId,
+          restaurant_id: restaurantData.id,
+          table_id: tableData.id,
+          status: 'pending',
+          total_amount: getTotal() + 2, // Including service fee
+          notes: orderNotes,
+        })
+        .select()
+        .single();
+
+      if (orderError) {
+        console.error('Order creation error:', orderError);
+        throw orderError;
+      }
+
+      console.log('Order created:', order);
+
+      // Create order items
+      const orderItems = items.map(item => ({
+        id: `item_${generateOrderId()}`, // Generate unique ID for each item
+        order_id: orderId,
+        menu_item_id: item.id,
+        quantity: item.quantity,
+        price_at_time: item.price,
+        notes: item.special_instructions,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) {
+        console.error('Order items creation error:', itemsError);
+        throw itemsError;
+      }
+
+      console.log('Order items created:', orderItems);
+
       // Clear cart and navigate to success page
       clearCart()
-      window.location.href = `${window.location.pathname}/success`
+      window.location.href = `/${restaurantSlug}/${tableNumber}/checkout/success`
     } catch (error) {
+      console.error('Error submitting order:', error);
       setIsSubmitting(false)
-      // You might want to add error handling here
     }
   }
 
   const handleBack = () => {
-    const currentPath = window.location.pathname
-    const parentPath = currentPath.split('/checkout')[0]
-    window.location.href = parentPath
+    if (restaurantSlug && tableNumber) {
+      window.location.href = `/${restaurantSlug}/${tableNumber}`
+    }
   }
 
   if (items.length === 0) {
@@ -123,7 +223,7 @@ export default function CheckoutPage() {
             className="w-full"
             size="lg"
             onClick={handleSubmitOrder}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !restaurantData}
           >
             {isSubmitting ? 'Processing...' : 'Place Order'}
           </Button>

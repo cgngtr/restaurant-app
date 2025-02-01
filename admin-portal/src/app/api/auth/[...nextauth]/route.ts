@@ -3,6 +3,7 @@ import NextAuth from 'next-auth/next'
 import { SupabaseAdapter } from '@auth/supabase-adapter'
 import { Adapter } from 'next-auth/adapters'
 import EmailProvider from 'next-auth/providers/email'
+import { supabase } from '@/lib/supabase'
 
 export const authOptions: NextAuthOptions = {
   adapter: SupabaseAdapter({
@@ -33,8 +34,9 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async session({ session, token }) {
-      if (token) {
-        session.user.id = token.sub!
+      if (session.user && token) {
+        session.user.id = token.sub
+        
         // Add restaurant access check here
         const { data: restaurant } = await supabase
           .from('restaurants')
@@ -45,6 +47,7 @@ export const authOptions: NextAuthOptions = {
         if (!restaurant) {
           throw new Error('Unauthorized')
         }
+        
         session.user.restaurantId = restaurant.id
       }
       return session
@@ -52,6 +55,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.sub = user.id
+        token.restaurantId = user.restaurantId
       }
       return token
     }
