@@ -14,9 +14,10 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { ShoppingCart } from 'lucide-react'
+import { ShoppingCart, Trash2 } from 'lucide-react'
 import { AnimateList, ListItem, ScaleIn } from '@/components/ui/animated-presence'
 import { motion, AnimatePresence } from 'framer-motion'
+import Image from 'next/image'
 
 export function Cart() {
   const [open, setOpen] = useState(false)
@@ -51,7 +52,7 @@ export function Cart() {
         </motion.div>
       </SheetTrigger>
       <SheetContent className="w-full sm:max-w-lg">
-        <SheetHeader>
+        <SheetHeader className="pb-6">
           <SheetTitle>Your Cart</SheetTitle>
         </SheetHeader>
         {items.length === 0 ? (
@@ -67,63 +68,76 @@ export function Cart() {
                     key={item.id}
                     className="flex flex-col space-y-2 border-b pb-4"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <h4 className="font-medium">{item.name}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {formatCurrency(item.price)} each
-                        </p>
+                    <div className="flex items-start justify-between gap-4">
+                      {item.image_url ? (
+                        <div className="relative h-16 w-16 flex-shrink-0">
+                          <Image
+                            src={item.image_url}
+                            alt={item.name}
+                            fill
+                            className="object-cover rounded-md"
+                          />
+                        </div>
+                      ) : (
+                        <div className="relative h-16 w-16 flex-shrink-0">
+                          <Image
+                            src={`https://source.unsplash.com/featured/?food,${encodeURIComponent(item.name)}`}
+                            alt={item.name}
+                            fill
+                            className="object-cover rounded-md"
+                          />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <div className="space-y-1">
+                          <h4 className="font-medium">{item.name}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {formatCurrency(item.price)} each
+                          </p>
+                        </div>
+                        <motion.div className="flex items-center space-x-2 mt-2">
+                          <motion.div whileTap={{ scale: 0.9 }}>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            >
+                              -
+                            </Button>
+                          </motion.div>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                              updateQuantity(item.id, parseInt(e.target.value) || 0)
+                            }
+                            className="h-8 w-16 text-center"
+                          />
+                          <motion.div whileTap={{ scale: 0.9 }}>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            >
+                              +
+                            </Button>
+                          </motion.div>
+                        </motion.div>
                       </div>
-                      <motion.div className="flex items-center space-x-2">
-                        <motion.div whileTap={{ scale: 0.9 }}>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                          >
-                            -
-                          </Button>
-                        </motion.div>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            updateQuantity(item.id, parseInt(e.target.value) || 0)
-                          }
-                          className="h-8 w-16 text-center"
-                        />
-                        <motion.div whileTap={{ scale: 0.9 }}>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          >
-                            +
-                          </Button>
-                        </motion.div>
+                      <motion.div whileTap={{ scale: 0.95 }}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive"
+                          onClick={() => removeItem(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </motion.div>
                     </div>
-                    <Textarea
-                      placeholder="Special instructions..."
-                      value={item.special_instructions || ''}
-                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                        updateSpecialInstructions(item.id, e.target.value)
-                      }
-                      className="h-20 resize-none"
-                    />
-                    <motion.div whileTap={{ scale: 0.95 }} className="self-end">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive"
-                        onClick={() => removeItem(item.id)}
-                      >
-                        Remove
-                      </Button>
-                    </motion.div>
                   </ListItem>
                 ))}
               </AnimateList>
