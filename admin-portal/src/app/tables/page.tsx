@@ -5,68 +5,80 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { toast } from '@/components/ui/use-toast'
-import QRCode from 'qrcode'
-import { Download, Plus, Trash, RefreshCw } from 'lucide-react'
+import { Plus, Eye, RefreshCw } from 'lucide-react'
+import Link from 'next/link'
 
-interface Table {
+interface TableStats {
   id: string
   table_number: string
-  restaurant_id: string
-  qr_code: string | null
   status: 'available' | 'occupied' | 'reserved'
+  total_orders: number
+  total_revenue: number
+  active_order?: {
+    id: string
+    status: string
+    total_amount: number
+  }
 }
 
 export default function TablesPage() {
-  const [tables, setTables] = useState<Table[]>([])
+  const [tables, setTables] = useState<TableStats[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const restaurantId = 'rest_demo1' // For testing purposes
 
   const fetchTables = async () => {
     console.log('Fetching tables...')
-    const { data, error } = await supabase
-      .from('tables')
-      .select('*')
-      .eq('restaurant_id', restaurantId)
-      .order('table_number')
+    try {
+      // First get all tables
+      const { data: tablesData, error: tablesError } = await supabase
+        .from('tables')
+        .select('id, table_number, status')
+        .eq('restaurant_id', restaurantId)
+        .order('table_number')
 
-    if (error) {
+      if (tablesError) throw tablesError
+
+      // For each table, get their stats
+      const tablesWithStats = await Promise.all(
+        (tablesData || []).map(async (table) => {
+          // Get all orders for this table
+          const { data: ordersData } = await supabase
+            .from('orders')
+            .select('id, status, total_amount')
+            .eq('table_id', table.id)
+
+          const orders = ordersData || []
+          const total_revenue = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0)
+          
+          // Get active order if any
+          const active_order = orders.find(order => 
+            order.status !== 'completed' && order.status !== 'cancelled'
+          )
+
+          return {
+            ...table,
+            total_orders: orders.length,
+            total_revenue,
+            active_order: active_order || undefined
+          }
+        })
+      )
+
+      setTables(tablesWithStats)
+    } catch (error) {
       console.error('Error fetching tables:', error)
       toast({
         title: 'Error',
         description: 'Failed to fetch tables',
         variant: 'destructive',
       })
-      return
     }
-
-    console.log('Fetched tables:', data)
-    setTables(data || [])
     setIsLoading(false)
   }
 
   useEffect(() => {
     fetchTables()
   }, [])
-
-  const generateQRCode = async (tableNumber: string): Promise<string> => {
-    console.log('Generating QR code for table:', tableNumber)
-    const url = `http://localhost:3000/demo-restaurant/${tableNumber}`
-    try {
-      const qrCode = await QRCode.toDataURL(url, {
-        width: 300,
-        margin: 2,
-        color: {
-          dark: '#000000',
-          light: '#ffffff',
-        },
-      })
-      console.log('QR code generated successfully')
-      return qrCode
-    } catch (error) {
-      console.error('Error generating QR code:', error)
-      throw error
-    }
-  }
 
   const generateTableId = () => {
     const timestamp = Date.now().toString(36)
@@ -78,7 +90,6 @@ export default function TablesPage() {
     const newTableNumber = (tables.length + 1).toString()
     
     try {
-      const qrCode = await generateQRCode(newTableNumber)
       const tableId = generateTableId()
       
       const { data, error } = await supabase
@@ -87,7 +98,6 @@ export default function TablesPage() {
           id: tableId,
           restaurant_id: restaurantId,
           table_number: newTableNumber,
-          qr_code: qrCode,
           status: 'available'
         })
         .select()
@@ -95,7 +105,8 @@ export default function TablesPage() {
 
       if (error) throw error
 
-      setTables(prev => [...prev, data as Table])
+      await fetchTables() // Refresh the list to get stats
+      
       toast({
         title: 'Success',
         description: `Table ${newTableNumber} created successfully`,
@@ -110,71 +121,30 @@ export default function TablesPage() {
     }
   }
 
-  const deleteTable = async (tableId: string, tableNumber: string) => {
-    try {
-      const { error } = await supabase
-        .from('tables')
-        .delete()
-        .eq('id', tableId)
-
-      if (error) throw error
-
-      setTables(prev => prev.filter(table => table.id !== tableId))
-      toast({
-        title: 'Success',
-        description: `Table ${tableNumber} deleted successfully`,
-      })
-    } catch (error) {
-      console.error('Error deleting table:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to delete table',
-        variant: 'destructive',
-      })
-    }
-  }
-
-  const downloadQRCode = (qrCode: string, tableNumber: string) => {
-    const link = document.createElement('a')
-    link.href = qrCode
-    link.download = `table-${tableNumber}-qr.png`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
   const createInitialTables = async () => {
     console.log('Creating initial tables...')
     setIsLoading(true)
     try {
-      const newTables = []
       for (let i = 1; i <= 5; i++) {
-        console.log(`Generating QR code for table ${i}...`)
-        const qrCode = await generateQRCode(i.toString())
         const tableId = generateTableId()
         
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('tables')
           .insert({
             id: tableId,
             restaurant_id: restaurantId,
             table_number: i.toString(),
-            qr_code: qrCode,
             status: 'available'
           })
-          .select()
-          .single()
 
         if (error) {
           console.error(`Error creating table ${i}:`, error)
           throw error
         }
-
-        console.log(`Table ${i} created:`, data)
-        newTables.push(data)
       }
 
-      setTables(newTables as Table[])
+      await fetchTables() // Refresh the list to get stats
+      
       toast({
         title: 'Success',
         description: 'Initial tables created successfully',
@@ -190,48 +160,25 @@ export default function TablesPage() {
     setIsLoading(false)
   }
 
-  const regenerateQRCodes = async () => {
-    setIsLoading(true)
-    try {
-      const updatedTables = []
-      for (const table of tables) {
-        const qrCode = await generateQRCode(table.table_number)
-        const { data, error } = await supabase
-          .from('tables')
-          .update({ qr_code: qrCode })
-          .eq('id', table.id)
-          .select()
-          .single()
-
-        if (error) {
-          console.error(`Error updating table ${table.table_number}:`, error)
-          continue
-        }
-        updatedTables.push(data)
-      }
-
-      setTables(updatedTables as Table[])
-      toast({
-        title: 'Success',
-        description: 'QR codes regenerated successfully',
-      })
-    } catch (error) {
-      console.error('Error regenerating QR codes:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to regenerate QR codes',
-        variant: 'destructive',
-      })
-    }
-    setIsLoading(false)
-  }
-
   if (isLoading) {
     return (
       <div className="container mx-auto p-4">
         <p className="text-center">Loading tables...</p>
       </div>
     )
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'available':
+        return 'bg-green-100 text-green-800'
+      case 'occupied':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'reserved':
+        return 'bg-blue-100 text-blue-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
   }
 
   return (
@@ -244,21 +191,10 @@ export default function TablesPage() {
               {isLoading ? 'Creating Tables...' : 'Create 5 Tables'}
             </Button>
           ) : (
-            <>
-              <Button 
-                variant="outline" 
-                onClick={regenerateQRCodes} 
-                disabled={isLoading}
-                className="flex items-center gap-2"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Regenerate QR Codes
-              </Button>
-              <Button onClick={createTable} disabled={isLoading}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Table
-              </Button>
-            </>
+            <Button onClick={createTable} disabled={isLoading}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Table
+            </Button>
           )}
         </div>
       </div>
@@ -272,37 +208,40 @@ export default function TablesPage() {
           {tables.map((table) => (
             <Card key={table.id} className="p-4">
               <div className="flex justify-between items-start mb-4">
-                <h2 className="text-xl font-semibold">Table {table.table_number}</h2>
-                <div className="space-x-2">
-                  {table.qr_code && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => downloadQRCode(table.qr_code!, table.table_number)}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  )}
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => deleteTable(table.id, table.table_number)}
-                  >
-                    <Trash className="h-4 w-4" />
+                <div>
+                  <h2 className="text-xl font-semibold">Table {table.table_number}</h2>
+                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-1 ${getStatusColor(table.status)}`}>
+                    {table.status}
+                  </span>
+                </div>
+                <Link href={`/tables/${table.id}`}>
+                  <Button variant="outline" size="sm">
+                    <Eye className="h-4 w-4 mr-2" />
+                    View Details
                   </Button>
-                </div>
+                </Link>
               </div>
-              {table.qr_code ? (
-                <div className="flex justify-center">
-                  <img
-                    src={table.qr_code}
-                    alt={`QR Code for Table ${table.table_number}`}
-                    className="w-48 h-48"
-                  />
+              
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Total Orders</span>
+                  <span className="font-medium">{table.total_orders}</span>
                 </div>
-              ) : (
-                <p className="text-center text-muted-foreground">QR code not available</p>
-              )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Total Revenue</span>
+                  <span className="font-medium">${table.total_revenue.toFixed(2)}</span>
+                </div>
+                {table.active_order && (
+                  <div className="mt-4 p-2 bg-yellow-50 rounded-md">
+                    <p className="text-sm font-medium text-yellow-800">Active Order</p>
+                    <div className="text-sm text-yellow-800">
+                      Status: {table.active_order.status}
+                      <br />
+                      Amount: ${table.active_order.total_amount.toFixed(2)}
+                    </div>
+                  </div>
+                )}
+              </div>
             </Card>
           ))}
         </div>

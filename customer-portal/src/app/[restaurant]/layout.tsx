@@ -2,6 +2,7 @@
 
 import { supabase } from '@/lib/supabase'
 import { Cart } from '@/components/cart/cart'
+import { Toaster } from '@/components/ui/toaster'
 import { useState, useEffect } from 'react'
 
 interface LayoutProps {
@@ -27,6 +28,7 @@ export default function RestaurantLayout({ children }: LayoutProps) {
         </div>
       </header>
       {children}
+      <Toaster />
     </div>
   )
 } 

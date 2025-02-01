@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { ArrowLeft } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { toast } from '@/components/ui/use-toast'
 
 export default function CheckoutPage() {
   const { items, getTotal, clearCart } = useCartStore()
@@ -62,7 +63,7 @@ export default function CheckoutPage() {
     setIsSubmitting(true)
     
     try {
-      // First, get the table ID
+      // First, get the table ID and update its status
       const { data: tableData, error: tableError } = await supabase
         .from('tables')
         .select('id')
@@ -75,7 +76,16 @@ export default function CheckoutPage() {
         throw tableError;
       }
 
-      console.log('Table data:', tableData);
+      // Update table status to occupied
+      const { error: updateError } = await supabase
+        .from('tables')
+        .update({ status: 'occupied' })
+        .eq('id', tableData.id);
+
+      if (updateError) {
+        console.error('Error updating table status:', updateError);
+        throw updateError;
+      }
 
       // Create order with generated ID
       const orderId = generateOrderId()
@@ -125,6 +135,11 @@ export default function CheckoutPage() {
       window.location.href = `/${restaurantSlug}/${tableNumber}/orders/${orderId}`
     } catch (error) {
       console.error('Error submitting order:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to submit order. Please try again.',
+        variant: 'destructive',
+      });
       setIsSubmitting(false)
     }
   }
