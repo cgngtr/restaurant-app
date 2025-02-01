@@ -6,6 +6,8 @@ import { OrderWithDetails } from '@/types/orders';
 import { OrderList } from '@/components/orders/order-list';
 import { OrderDetails } from '@/components/orders/order-details';
 import { toast } from '@/components/ui/use-toast';
+import { Button } from '@/components/ui/button';
+import { Trash2 } from 'lucide-react';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
@@ -142,9 +144,77 @@ export default function OrdersPage() {
     });
   };
 
+  const handleClearAllOrders = async () => {
+    if (!process.env.NEXT_PUBLIC_DEVELOPMENT_MODE) return;
+    
+    if (!confirm('⚠️ Are you sure you want to clear ALL orders? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      // Get all order IDs for this restaurant
+      const { data: orderIds } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('restaurant_id', restaurantId);
+
+      if (orderIds && orderIds.length > 0) {
+        // Delete all order items for these orders
+        const { error: itemsError } = await supabase
+          .from('order_items')
+          .delete()
+          .in('order_id', orderIds.map(order => order.id));
+
+        if (itemsError) {
+          console.error('Error deleting order items:', itemsError);
+          throw itemsError;
+        }
+      }
+
+      // Then delete all orders
+      const { error: ordersError } = await supabase
+        .from('orders')
+        .delete()
+        .eq('restaurant_id', restaurantId);
+
+      if (ordersError) {
+        console.error('Error deleting orders:', ordersError);
+        throw ordersError;
+      }
+
+      setOrders([]); // Immediately clear the orders in the UI
+      setSelectedOrder(null); // Clear selected order
+
+      toast({
+        title: 'Success',
+        description: 'All orders have been cleared',
+      });
+    } catch (error) {
+      console.error('Error clearing orders:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to clear orders',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6">Live Orders</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Live Orders</h1>
+        {process.env.NEXT_PUBLIC_DEVELOPMENT_MODE && (
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleClearAllOrders}
+            className="flex items-center gap-2"
+          >
+            <Trash2 className="h-4 w-4" />
+            Clear All Orders (Dev Only)
+          </Button>
+        )}
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <OrderList 
           orders={orders} 
