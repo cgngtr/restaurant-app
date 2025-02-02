@@ -89,15 +89,6 @@ export function MenuCategory({ category, items }: MenuCategoryProps) {
 
   return (
     <div className="space-y-4">
-      <motion.h2 
-        className="text-xl font-semibold"
-        initial="offscreen"
-        whileInView="onscreen"
-        viewport={{ once: false, margin: "-50px" }}
-        variants={titleAnimation}
-      >
-        {category.name}
-      </motion.h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((item) => (
           <motion.div

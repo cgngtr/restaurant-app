@@ -76,7 +76,7 @@ export default async function RestaurantTablePage({ params }: PageProps) {
   }
 
   return (
-    <main className="container mx-auto px-4 py-8">
+    <main className="container mx-auto px-4 py-0">
       <Menu
         categories={restaurant.menu_categories}
         items={restaurant.menu_items}
