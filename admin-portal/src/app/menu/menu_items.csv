@@ -1,0 +1,51 @@
+name,description,price,category,image_url,is_available
+Crispy Calamari,Fresh squid rings lightly battered and served with marinara sauce,12.99,Appetizers,https://images.unsplash.com/photo-1599487488170-d11ec9c172f0,TRUE
+Bruschetta,Toasted bread topped with fresh tomatoes garlic and basil,9.99,Appetizers,https://images.unsplash.com/photo-1572695157366-5e585ab2b69f,TRUE
+Spinach Artichoke Dip,Creamy blend of spinach artichokes and melted cheese,11.99,Appetizers,https://images.unsplash.com/photo-1576506295286-5cda18df43e7,TRUE
+Buffalo Wings,Crispy chicken wings tossed in spicy buffalo sauce,14.99,Appetizers,https://images.unsplash.com/photo-1608039755401-742074f0548d,TRUE
+Mozzarella Sticks,Breaded mozzarella served with marinara sauce,8.99,Appetizers,https://images.unsplash.com/photo-1531749668029-257f2a9a4b11,TRUE
+Grilled Salmon,Fresh Atlantic salmon with lemon herb butter,26.99,Main Courses,https://images.unsplash.com/photo-1485921325833-c519f76c4927,TRUE
+Filet Mignon,8oz premium cut beef tenderloin,34.99,Main Courses,https://images.unsplash.com/photo-1558030006-450675393462,TRUE
+Chicken Marsala,Pan-seared chicken breast in marsala wine sauce,23.99,Main Courses,https://images.unsplash.com/photo-1604908176997-125f25cc6f3d,TRUE
+Herb-Roasted Duck,Crispy duck breast with orange glaze,29.99,Main Courses,https://images.unsplash.com/photo-1619221882220-947b3d3c8861,TRUE
+Seafood Paella,Traditional Spanish rice dish with mixed seafood,28.99,Main Courses,https://images.unsplash.com/photo-1534080564583-6be75777b70a,TRUE
+Classic Cheeseburger,Angus beef patty with cheddar lettuce and tomato,15.99,Burgers & Sandwiches,https://images.unsplash.com/photo-1568901346375-23c9450c58cd,TRUE
+Grilled Chicken Club,Grilled chicken breast bacon lettuce and avocado,16.99,Burgers & Sandwiches,https://images.unsplash.com/photo-1550507992-eb63ffdc42ac,TRUE
+Veggie Burger,House-made vegetable patty with special sauce,14.99,Burgers & Sandwiches,https://images.unsplash.com/photo-1520072959219-c595dc870360,TRUE
+Philly Cheesesteak,Sliced beef with melted cheese and onions,17.99,Burgers & Sandwiches,https://images.unsplash.com/photo-1511344407683-b1172dce025f,TRUE
+BBQ Pulled Pork,Slow-cooked pork with BBQ sauce and coleslaw,15.99,Burgers & Sandwiches,https://images.unsplash.com/photo-1513185158878-8d8c2a2a3da3,TRUE
+Spaghetti Carbonara,Classic pasta with pancetta egg and parmesan,18.99,Pasta & Risotto,https://images.unsplash.com/photo-1612874742237-6526221588e3,TRUE
+Mushroom Risotto,Creamy arborio rice with wild mushrooms,19.99,Pasta & Risotto,https://images.unsplash.com/photo-1476124369491-e7addf5db371,TRUE
+Penne Arrabbiata,Spicy tomato sauce with garlic and red chilies,16.99,Pasta & Risotto,https://images.unsplash.com/photo-1563379926898-05f4575a45d8,TRUE
+Lobster Ravioli,Handmade pasta filled with lobster in cream sauce,27.99,Pasta & Risotto,https://images.unsplash.com/photo-1551183053-bf91a1d81141,TRUE
+Truffle Fettuccine,Fresh pasta with black truffle and parmesan,24.99,Pasta & Risotto,https://images.unsplash.com/photo-1473093295043-cdd812d0e601,TRUE
+Caesar Salad,Romaine lettuce parmesan croutons and caesar dressing,12.99,Salads,https://images.unsplash.com/photo-1550304943-4f24f54ddde9,TRUE
+Greek Salad,Mixed greens feta olives and red onions,13.99,Salads,https://images.unsplash.com/photo-1540189549336-e6e99c3679fe,TRUE
+Quinoa Bowl,Quinoa with roasted vegetables and tahini dressing,14.99,Salads,https://images.unsplash.com/photo-1512621776951-a57141f2eefd,TRUE
+Cobb Salad,Mixed greens chicken bacon avocado and blue cheese,15.99,Salads,https://images.unsplash.com/photo-1512852939750-1305098529bf,TRUE
+Caprese Salad,Fresh mozzarella tomatoes and basil,11.99,Salads,https://images.unsplash.com/photo-1592417817098-8fd3d9eb14a5,TRUE
+Chocolate Lava Cake,Warm chocolate cake with molten center,9.99,Desserts,https://images.unsplash.com/photo-1624353365286-3f8d62daad51,TRUE
+New York Cheesecake,Classic cheesecake with berry compote,8.99,Desserts,https://images.unsplash.com/photo-1533134242443-d4fd215305ad,TRUE
+Tiramisu,Italian coffee-flavored dessert,8.99,Desserts,https://images.unsplash.com/photo-1571877227200-a0d98ea607e9,TRUE
+Apple Pie,Warm apple pie with vanilla ice cream,7.99,Desserts,https://images.unsplash.com/photo-1568571780765-9276235f1945,TRUE
+Creme Brulee,Classic French vanilla custard,8.99,Desserts,https://images.unsplash.com/photo-1470124182917-cc6e71b22ecc,TRUE
+Fresh Lemonade,House-made lemonade with mint,4.99,Beverages,https://images.unsplash.com/photo-1621263764928-df1444c5e859,TRUE
+Iced Tea,Fresh-brewed unsweetened or sweet tea,3.99,Beverages,https://images.unsplash.com/photo-1499638673689-79a0b5115d87,TRUE
+Smoothie,Mixed berry or tropical fruit smoothie,6.99,Beverages,https://images.unsplash.com/photo-1505252585461-04db1eb84625,TRUE
+Italian Soda,Flavored sparkling water with cream,4.99,Beverages,https://images.unsplash.com/photo-1558645836-e44122a743ee,TRUE
+Fresh Coffee,Premium roasted coffee,3.99,Beverages,https://images.unsplash.com/photo-1495474472287-4d71bcdd2085,TRUE
+Truffle Fries,Hand-cut fries with truffle oil and parmesan,8.99,Side Dishes,https://images.unsplash.com/photo-1573080496219-bb080dd4f877,TRUE
+Grilled Asparagus,Fresh asparagus with olive oil and sea salt,7.99,Side Dishes,https://images.unsplash.com/photo-1510431198580-7727c9fa1e3a,TRUE
+Mac and Cheese,Creamy four-cheese blend,8.99,Side Dishes,https://images.unsplash.com/photo-1543339494-b4cd4f7ba686,TRUE
+Roasted Brussels Sprouts,Crispy sprouts with balsamic glaze,7.99,Side Dishes,https://images.unsplash.com/photo-1572449043416-55f4685c9bb7,TRUE
+Garlic Mashed Potatoes,Creamy potatoes with roasted garlic,6.99,Side Dishes,https://images.unsplash.com/photo-1518791841217-8f162f1e1131,TRUE
+Shrimp Cocktail,Jumbo shrimp with cocktail sauce,16.99,Appetizers,https://images.unsplash.com/photo-1565557623262-b51c2513a641,TRUE
+Beef Carpaccio,Thinly sliced raw beef with arugula,17.99,Appetizers,https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58,TRUE
+Rack of Lamb,Herb-crusted lamb rack with mint sauce,35.99,Main Courses,https://images.unsplash.com/photo-1602847213180-50e43a80bfbd,TRUE
+Sea Bass,Pan-seared sea bass with lemon butter,32.99,Main Courses,https://images.unsplash.com/photo-1534043464124-3be32fe000c9,TRUE
+Bacon Avocado Burger,Angus beef with bacon and fresh avocado,18.99,Burgers & Sandwiches,https://images.unsplash.com/photo-1553979459-d2229ba7433b,TRUE
+Seafood Linguine,Mixed seafood in white wine sauce,25.99,Pasta & Risotto,https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8,TRUE
+Pear and Gorgonzola Salad,Mixed greens with pear and blue cheese,14.99,Salads,https://images.unsplash.com/photo-1505253716362-afaea1d3d1af,TRUE
+Creme Caramel,Classic French flan with caramel sauce,8.99,Desserts,https://images.unsplash.com/photo-1488477181946-6428a0291777,TRUE
+Craft Beer,Selection of local craft beers,7.99,Beverages,https://images.unsplash.com/photo-1535958636474-b021ee887b13,TRUE
+Sweet Potato Fries,Crispy sweet potato fries with aioli,7.99,Side Dishes,https://images.unsplash.com/photo-1603903631918-a6a92fb6ac49,TRUE
