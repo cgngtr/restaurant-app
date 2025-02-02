@@ -76,11 +76,17 @@ export default async function RestaurantTablePage({ params }: PageProps) {
   }
 
   return (
-    <main className="container mx-auto px-4 py-0">
-      <Menu
-        categories={restaurant.menu_categories}
-        items={restaurant.menu_items}
-      />
+    <main className="container mx-auto px-4 py-6">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Menu</h1>
+          <p className="text-muted-foreground">Table {params.table}</p>
+        </div>
+        <Menu
+          categories={restaurant.menu_categories}
+          items={restaurant.menu_items}
+        />
+      </div>
     </main>
   )
 } 

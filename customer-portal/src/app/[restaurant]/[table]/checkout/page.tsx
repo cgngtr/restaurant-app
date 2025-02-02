@@ -152,11 +152,11 @@ export default function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex flex-col items-center justify-center space-y-4">
           <p className="text-lg text-muted-foreground">Your cart is empty</p>
           <Button
-            className="mt-4"
+            variant="outline"
             onClick={handleBack}
           >
             Return to Menu
@@ -167,23 +167,26 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <Button
-        variant="ghost"
-        className="mb-6"
-        onClick={handleBack}
-      >
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to Menu
-      </Button>
+    <div className="container mx-auto px-4 py-6">
+      <div className="flex items-center mb-6">
+        <Button
+          variant="ghost"
+          onClick={handleBack}
+          className="mr-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Menu
+        </Button>
+        <h1 className="text-2xl font-bold">Checkout</h1>
+      </div>
 
-      <div className="grid gap-8 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-6">
-          <h1 className="text-2xl font-semibold">Order Summary</h1>
-          <div className="space-y-4">
-            {items.map((item) => (
-              <Card key={item.id} className="p-4">
-                <div className="flex justify-between">
+          <Card className="p-6">
+            <h2 className="text-lg font-medium mb-4">Order Items</h2>
+            <div className="space-y-4">
+              {items.map((item) => (
+                <div key={item.id} className="flex justify-between pb-4 border-b last:border-0 last:pb-0">
                   <div>
                     <h3 className="font-medium">{item.name}</h3>
                     <p className="text-sm text-muted-foreground">
@@ -199,30 +202,31 @@ export default function CheckoutPage() {
                     {formatCurrency(item.price * item.quantity)}
                   </p>
                 </div>
-              </Card>
-            ))}
-          </div>
+              ))}
+            </div>
+          </Card>
         </div>
 
         <div className="space-y-6">
-          <div>
-            <h2 className="text-lg font-medium mb-2">Additional Notes</h2>
+          <Card className="p-6">
+            <h2 className="text-lg font-medium mb-4">Additional Notes</h2>
             <Textarea
               placeholder="Any special requests for your order?"
               value={orderNotes}
               onChange={(e) => setOrderNotes(e.target.value)}
               className="h-32"
             />
-          </div>
+          </Card>
 
-          <Card className="p-4">
+          <Card className="p-6">
+            <h2 className="text-lg font-medium mb-4">Order Summary</h2>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span>Subtotal</span>
+                <span className="text-muted-foreground">Subtotal</span>
                 <span>{formatCurrency(getTotal())}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span>Service Fee</span>
+                <span className="text-muted-foreground">Service Fee</span>
                 <span>{formatCurrency(2)}</span>
               </div>
               <div className="border-t pt-2 mt-2">

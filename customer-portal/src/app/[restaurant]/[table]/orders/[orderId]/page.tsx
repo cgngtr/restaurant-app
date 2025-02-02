@@ -151,8 +151,8 @@ export default function OrderStatusPage({ params }: Props) {
 
   if (!order) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex items-center justify-center h-[60vh]">
           <p className="text-lg text-muted-foreground">Loading order details...</p>
         </div>
       </div>
@@ -163,37 +163,41 @@ export default function OrderStatusPage({ params }: Props) {
   const StatusIcon = currentStatus.icon
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <Button
-        variant="ghost"
-        className="mb-6"
-        onClick={handleBack}
-      >
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to Menu
-      </Button>
+    <div className="container mx-auto px-4 py-6">
+      <div className="flex items-center mb-6">
+        <Button
+          variant="ghost"
+          onClick={handleBack}
+          className="mr-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Menu
+        </Button>
+        <h1 className="text-2xl font-bold">Order Status</h1>
+      </div>
 
-      <div className="space-y-6">
-        <div className="text-center space-y-4">
-          <StatusIcon className={`h-16 w-16 mx-auto ${currentStatus.color}`} />
-          <h1 className="text-2xl font-semibold">{currentStatus.label}</h1>
-          <p className="text-muted-foreground">{currentStatus.description}</p>
-        </div>
-
+      <div className="grid gap-6 md:grid-cols-2">
         <Card className="p-6">
-          <h2 className="text-lg font-medium mb-4">Order Details</h2>
+          <div className="flex items-center space-x-4 mb-6">
+            <StatusIcon className={`h-10 w-10 ${currentStatus.color}`} />
+            <div>
+              <h2 className="text-lg font-medium">{currentStatus.label}</h2>
+              <p className="text-sm text-muted-foreground">{currentStatus.description}</p>
+            </div>
+          </div>
+
           <div className="space-y-4">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Order ID</span>
-              <span>{order.id}</span>
+              <span className="font-medium">{order.id}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Table Number</span>
-              <span>{order.table.table_number}</span>
+              <span className="font-medium">{order.table.table_number}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Order Time</span>
-              <span>{new Date(order.created_at).toLocaleTimeString()}</span>
+              <span className="font-medium">{new Date(order.created_at).toLocaleTimeString()}</span>
             </div>
           </div>
         </Card>
@@ -202,7 +206,7 @@ export default function OrderStatusPage({ params }: Props) {
           <h2 className="text-lg font-medium mb-4">Order Items</h2>
           <div className="space-y-4">
             {order.order_items.map((item, index) => (
-              <div key={index} className="flex justify-between">
+              <div key={index} className="flex justify-between pb-4 border-b last:border-0 last:pb-0">
                 <div>
                   <h3 className="font-medium">{item.menu_item.name}</h3>
                   <p className="text-sm text-muted-foreground">
