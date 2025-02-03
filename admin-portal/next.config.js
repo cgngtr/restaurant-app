@@ -7,20 +7,29 @@ const nextConfig = {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
-  webpack: (config) => {
+  webpack: (config, { dev, isServer }) => {
+    // Optimize webpack configuration
+    if (dev && !isServer) {
+      config.watchOptions = {
+        ignored: ['**/node_modules', '**/.git', '**/.next'],
+        aggregateTimeout: 300,
+        poll: false,
+      }
+    }
+
     config.experiments = {
       ...config.experiments,
       topLevelAwait: true,
     }
+
     return config
   },
   // Development settings
-  webpackDevMiddleware: config => {
-    config.watchOptions = {
-      poll: 800,
-      aggregateTimeout: 200,
-    }
-    return config
+  onDemandEntries: {
+    // period (in ms) where the server will keep pages in the buffer
+    maxInactiveAge: 60 * 1000,
+    // number of pages that should be kept simultaneously without being disposed
+    pagesBufferLength: 5,
   },
   // Increase timeout for development
   experimental: {
