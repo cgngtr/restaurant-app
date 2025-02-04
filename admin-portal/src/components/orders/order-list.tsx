@@ -1,7 +1,10 @@
-import { OrderWithDetails } from '@/types/orders';
-import { cn } from '@/lib/utils';
-import { formatDistanceToNow } from 'date-fns';
-import { useEffect, useState } from 'react';
+'use client';
+
+import { OrderWithDetails } from '@/types/order';
+import { Card } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
 
 interface OrderListProps {
   orders: OrderWithDetails[];
@@ -10,75 +13,46 @@ interface OrderListProps {
 }
 
 export function OrderList({ orders, selectedOrderId, onOrderSelect }: OrderListProps) {
-  // Use state to handle client-side rendering of dates
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'preparing':
-        return 'bg-blue-100 text-blue-800';
-      case 'ready':
-        return 'bg-green-100 text-green-800';
-      case 'completed':
-        return 'bg-gray-100 text-gray-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const formatDate = (date: string) => {
-    if (!mounted) return ''; // Return empty string during SSR
-    return formatDistanceToNow(new Date(date), { addSuffix: true });
-  };
-
   return (
-    <div className="bg-white rounded-lg shadow">
+    <Card className="h-[calc(100vh-12rem)]">
       <div className="p-4 border-b">
-        <h2 className="text-lg font-semibold">Orders</h2>
+        <h2 className="text-lg font-semibold">Orders ({orders.length})</h2>
       </div>
-      <div className="divide-y">
-        {orders.map((order) => (
-          <div
-            key={order.id}
-            className={cn(
-              'p-4 cursor-pointer hover:bg-gray-50 transition-colors',
-              selectedOrderId === order.id && 'bg-gray-50'
-            )}
-            onClick={() => onOrderSelect(order)}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center space-x-2">
-                <span className="font-medium">Table {order.table.table_number}</span>
-                <span className={cn(
-                  'px-2 py-1 rounded-full text-xs font-medium',
-                  getStatusColor(order.status)
-                )}>
-                  {order.status}
-                </span>
+      <ScrollArea className="h-[calc(100%-4rem)]">
+        <div className="p-2">
+          {orders.map((order) => (
+            <div
+              key={order.id}
+              className={`p-4 rounded-lg cursor-pointer transition-colors ${
+                selectedOrderId === order.id
+                  ? 'bg-primary/10'
+                  : 'hover:bg-muted'
+              }`}
+              onClick={() => onOrderSelect(order)}
+            >
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <p className="font-medium">Order #{order.id.slice(0, 8)}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Table {order.table?.table_number || 'N/A'}
+                  </p>
+                </div>
+                <Badge variant="outline">{order.status}</Badge>
               </div>
-              <span className="text-sm text-gray-500">
-                {formatDate(order.created_at)}
-              </span>
+              <div className="space-y-1">
+                {order.order_items.map((item) => (
+                  <div key={item.id} className="text-sm">
+                    {item.quantity}x {item.menu_item.name}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 text-sm text-muted-foreground">
+                {format(new Date(order.created_at), 'MMM d, HH:mm')}
+              </div>
             </div>
-            <div className="text-sm text-gray-600">
-              {order.order_items.length} items · ${order.total_amount.toFixed(2)}
-            </div>
-          </div>
-        ))}
-        {orders.length === 0 && (
-          <div className="p-4 text-center text-gray-500">
-            No orders found
-          </div>
-        )}
-      </div>
-    </div>
+          ))}
+        </div>
+      </ScrollArea>
+    </Card>
   );
 } 

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/use-toast'
 import { FileSpreadsheet, Plus, Search, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import MenuItemCard from '@/components/menu/MenuItemCard'
+import { MenuItemCard } from '@/components/menu/MenuItemCard'
 import {
   Dialog,
   DialogContent,
@@ -19,31 +19,14 @@ import {
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
+import { MenuItemCard as NewMenuItemCard } from '@/components/menu/MenuItemCard'
+import { useToast } from '@/components/ui/use-toast'
+import type { Database } from '@/types/supabase'
+import type { MenuItem } from '@/types/menu'
+import { NewItemModal } from '@/components/menu/new-item-modal'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
-interface MenuItem {
-  id: string
-  name: string
-  description: string
-  price: number
-  category_id: string
-  restaurant_id: string
-  image_url: string | null
-  is_available: boolean
-  customization_options: {
-    type: 'burger' | 'coffee' | null
-    extras: Record<string, number>
-    sides: Record<string, number>
-    sizes: Record<string, number>
-    milk_options: Record<string, number>
-  }
-}
-
-interface Category {
-  id: string
-  name: string
-  sort_order: number
-  restaurant_id: string
-}
+type MenuCategory = Database['public']['Tables']['menu_categories']['Row']
 
 interface CustomizationOption {
   name: string;
@@ -58,870 +41,225 @@ interface CustomizationOptions {
   milk_options: Record<string, number>;
 }
 
+interface Category {
+  id: string;
+  name: string;
+  sort_order: number;
+}
+
 export default function MenuPage() {
-  const [isUploading, setIsUploading] = useState(false)
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [selectedCategory, setSelectedCategory] = useState<string>('')
-  const [searchQuery, setSearchQuery] = useState<string>('')
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [newItem, setNewItem] = useState<Partial<MenuItem>>({
-    name: '',
-    description: '',
-    price: 0,
-    category_id: '',
-    is_available: true,
-    customization_options: {
-      type: null,
-      extras: {},
-      sides: {},
-      sizes: {},
-      milk_options: {}
-    }
-  })
-  const [customizationOptions, setCustomizationOptions] = useState<CustomizationOptions>({
-    type: null,
-    extras: {},
-    sides: {},
-    sizes: {},
-    milk_options: {}
-  })
+  const [items, setItems] = useState<MenuItem[]>([])
+  const [categories, setCategories] = useState<MenuCategory[]>([])
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const { toast } = useToast()
 
+  // Sayfa yüklendiğinde verileri çek
   useEffect(() => {
-    fetchCategories()
-    fetchMenuItems()
-  }, [])
-
-  const getRestaurantId = async () => {
-    // Try both possible slugs
-    const { data: restaurant, error } = await supabase
-      .from('restaurants')
-      .select('id')
-      .or('slug.eq.demo-restaurant,slug.eq.rest_demo1')
-      .single()
-
-    if (error || !restaurant) {
-      console.error('Error getting restaurant:', error)
-      toast({
-        title: 'Error',
-        description: 'Restaurant not found',
-        variant: 'destructive'
-      })
-      return null
-    }
-
-    return restaurant.id
-  }
-
-  const fetchCategories = async () => {
-    try {
-      const restaurantId = await getRestaurantId()
-      if (!restaurantId) return
-
-      const { data, error } = await supabase
-        .from('menu_categories')
-        .select('*')
-        .eq('restaurant_id', restaurantId)
-        .order('sort_order', { ascending: true })
-
-      if (error) {
-        console.error('Error fetching categories:', error)
-        toast({
-          title: 'Error',
-          description: error.message,
-          variant: 'destructive'
-        })
-        return
-      }
-
-      console.log('Fetched categories:', data)
-      setCategories(data)
-    } catch (error: any) {
-      console.error('Error in fetchCategories:', error)
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive'
-      })
-    }
-  }
-
-  const createCategories = async () => {
-    try {
-      const restaurantId = await getRestaurantId()
-      if (!restaurantId) return null
-
-      const categoriesToCreate = [
-        { id: crypto.randomUUID(), name: 'Appetizers', sort_order: 1, restaurant_id: restaurantId },
-        { id: crypto.randomUUID(), name: 'Main Courses', sort_order: 2, restaurant_id: restaurantId },
-        { id: crypto.randomUUID(), name: 'Burgers & Sandwiches', sort_order: 3, restaurant_id: restaurantId },
-        { id: crypto.randomUUID(), name: 'Pasta & Risotto', sort_order: 4, restaurant_id: restaurantId },
-        { id: crypto.randomUUID(), name: 'Salads', sort_order: 5, restaurant_id: restaurantId },
-        { id: crypto.randomUUID(), name: 'Desserts', sort_order: 6, restaurant_id: restaurantId },
-        { id: crypto.randomUUID(), name: 'Beverages', sort_order: 7, restaurant_id: restaurantId },
-        { id: crypto.randomUUID(), name: 'Side Dishes', sort_order: 8, restaurant_id: restaurantId }
-      ]
-
-      console.log('Creating categories for restaurant:', restaurantId)
-      const { data, error } = await supabase
-        .from('menu_categories')
-        .insert(categoriesToCreate)
-        .select()
-
-      if (error) {
-        console.error('Error creating categories:', error)
-        toast({
-          title: 'Error',
-          description: error.message,
-          variant: 'destructive'
-        })
-        return null
-      }
-
-      console.log('Categories created:', data)
-      setCategories(data)
-      return data
-    } catch (error: any) {
-      console.error('Error in createCategories:', error)
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive'
-      })
-      return null
-    }
-  }
-
-  const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    setIsUploading(true)
-    try {
-      // First, ensure we have categories
-      if (categories.length === 0) {
-        console.log('No categories found, creating default categories...')
-        const newCategories = await createCategories()
-        if (!newCategories) {
-          toast({
-            title: 'Error',
-            description: 'Failed to create categories',
-            variant: 'destructive'
-          })
-          return
-        }
-      }
-
-      const text = await file.text()
-      // Split by newline and filter out empty lines
-      const rows = text.split('\n').filter(row => row.trim().length > 0)
-      const headers = rows[0].split(',').map(header => header.trim())
-      
-      const requiredHeaders = ['name', 'description', 'price', 'category']
-      const missingHeaders = requiredHeaders.filter(h => !headers.includes(h))
-      
-      if (missingHeaders.length > 0) {
-        toast({
-          title: 'Invalid CSV Format',
-          description: `Missing required columns: ${missingHeaders.join(', ')}`,
-          variant: 'destructive'
-        })
-        return
-      }
-
-      const restaurantId = await getRestaurantId()
-      if (!restaurantId) return
-
-      console.log('Processing CSV rows...')
-      // Process items and map categories to category_ids
-      const items = rows.slice(1).map((row, index) => {
-        const values = row.split(',').map(value => value.trim())
+    const loadData = async () => {
+      try {
+        setIsLoading(true)
         
-        // Skip empty rows
-        if (values.every(v => !v)) {
-          return null
-        }
+        // Kategorileri yükle
+        const { data: categoriesData, error: categoriesError } = await supabase
+          .from('menu_categories')
+          .select('*')
+          .order('sort_order')
 
-        const item: any = {
-          id: crypto.randomUUID(),
-          restaurant_id: restaurantId,
-        }
-        
-        headers.forEach((header, colIndex) => {
-          if (header === 'category') {
-            const categoryName = values[colIndex]
-            if (!categoryName) {
-              throw new Error(`Empty category name at row ${index + 2}`)
-            }
-            const category = categories.find(c => c.name === categoryName)
-            if (!category) {
-              throw new Error(`Category "${categoryName}" not found for item at row ${index + 2}`)
-            }
-            item.category_id = category.id
-          } else if (header === 'price') {
-            const price = parseFloat(values[colIndex])
-            if (isNaN(price)) {
-              throw new Error(`Invalid price format at row ${index + 2}`)
-            }
-            item[header] = price
-          } else if (header !== 'is_available') {
-            item[header] = values[colIndex]
-          }
-        })
+        if (categoriesError) throw categoriesError
 
-        // Validate required fields
-        if (!item.name || !item.description || !item.price || !item.category_id) {
-          throw new Error(`Missing required fields for item at row ${index + 2}`)
-        }
+        // Menü öğelerini yükle
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('menu_items')
+          .select(`
+            *,
+            category:menu_categories (
+              name
+            )
+          `)
 
-        return item
-      }).filter(item => item !== null) // Remove null items (empty rows)
+        if (itemsError) throw itemsError
 
-      if (items.length === 0) {
+        setCategories(categoriesData)
+        setItems(itemsData)
+      } catch (error: any) {
         toast({
           title: 'Error',
-          description: 'No valid menu items found in CSV',
-          variant: 'destructive'
+          description: 'Failed to load menu data',
+          variant: 'destructive',
         })
-        return
+      } finally {
+        setIsLoading(false)
       }
+    }
 
-      console.log(`Uploading ${items.length} items to Supabase...`)
-      // Upload to Supabase
+    loadData()
+  }, [toast])
+
+  // Yeni menü öğesi oluştur
+  const handleCreateItem = async (newItem: Partial<MenuItem>) => {
+    try {
       const { data, error } = await supabase
         .from('menu_items')
-        .insert(items)
+        .insert([newItem])
         .select()
-
-      if (error) throw error
-
-      toast({
-        title: 'Success',
-        description: `${items.length} menu items imported successfully`,
-      })
-
-      fetchMenuItems()
-    } catch (error: any) {
-      console.error('Error in handleCSVUpload:', error)
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive'
-      })
-    } finally {
-      setIsUploading(false)
-    }
-  }
-
-  const fetchMenuItems = async () => {
-    const { data, error } = await supabase
-      .from('menu_items')
-      .select(`
-        *,
-        category:menu_categories(name)
-      `)
-      .order('name', { ascending: true })
-
-    if (error) {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive'
-      })
-      return
-    }
-
-    setMenuItems(data)
-  }
-
-  const handleAddItem = async () => {
-    try {
-      // Get restaurant ID
-      const { data: restaurant } = await supabase
-        .from('restaurants')
-        .select('id')
         .single()
 
-      if (!restaurant?.id) {
-        toast({
-          title: 'Error',
-          description: 'Restaurant not found',
-          variant: 'destructive'
-        })
-        return
-      }
-
-      // Validate required fields
-      if (!newItem.name || !newItem.description || !newItem.price || !newItem.category_id) {
-        toast({
-          title: 'Error',
-          description: 'Please fill in all required fields',
-          variant: 'destructive'
-        })
-        return
-      }
-
-      const itemToAdd = {
-        ...newItem,
-        id: crypto.randomUUID(),
-        restaurant_id: restaurant.id,
-        customization_options: customizationOptions
-      }
-
-      const { data, error } = await supabase
-        .from('menu_items')
-        .insert([itemToAdd])
-        .select()
-
       if (error) throw error
 
+      setItems((prev) => [...prev, data])
+      setIsModalOpen(false)
       toast({
         title: 'Success',
-        description: 'Menu item added successfully',
+        description: 'Menu item created successfully',
       })
-
-      setIsAddDialogOpen(false)
-      setNewItem({
-        name: '',
-        description: '',
-        price: 0,
-        category_id: '',
-        is_available: true,
-        customization_options: {
-          type: null,
-          extras: {},
-          sides: {},
-          sizes: {},
-          milk_options: {}
-        }
-      })
-      setCustomizationOptions({
-        type: null,
-        extras: {},
-        sides: {},
-        sizes: {},
-        milk_options: {}
-      })
-      fetchMenuItems()
-    } catch (error: any) {
+    } catch (error) {
+      console.error('Error creating menu item:', error)
       toast({
         title: 'Error',
-        description: error.message,
-        variant: 'destructive'
+        description: 'Failed to create menu item',
+        variant: 'destructive',
       })
     }
   }
 
-  const handleDeleteItem = async (id: string) => {
+  // Menü öğesini güncelle
+  const handleUpdateItem = async (itemId: string, updates: Partial<MenuItem>) => {
+    try {
+      const { error } = await supabase
+        .from('menu_items')
+        .update(updates)
+        .eq('id', itemId)
+
+      if (error) throw error
+
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === itemId ? { ...item, ...updates } : item
+        )
+      )
+
+      toast({
+        title: 'Success',
+        description: 'Menu item updated successfully',
+      })
+    } catch (error) {
+      console.error('Error updating menu item:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to update menu item',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  // Menü öğesini sil
+  const handleDeleteItem = async (itemId: string) => {
+    if (!confirm('Are you sure you want to delete this item?')) return
+
     try {
       const { error } = await supabase
         .from('menu_items')
         .delete()
-        .eq('id', id)
+        .eq('id', itemId)
 
       if (error) throw error
 
+      setItems((prev) => prev.filter((item) => item.id !== itemId))
       toast({
         title: 'Success',
         description: 'Menu item deleted successfully',
       })
-
-      fetchMenuItems()
-    } catch (error: any) {
+    } catch (error) {
+      console.error('Error deleting menu item:', error)
       toast({
         title: 'Error',
-        description: error.message,
-        variant: 'destructive'
+        description: 'Failed to delete menu item',
+        variant: 'destructive',
       })
     }
   }
 
-  // Add preload function
-  const preloadAdjacentImages = useCallback((currentIndex: number) => {
-    const preloadImage = (url: string) => {
-      if (!url) return
-      const img = new Image()
-      img.src = url
-    }
-
-    // Preload next and previous 2 images
-    for (let i = -2; i <= 2; i++) {
-      const index = currentIndex + i
-      if (index >= 0 && index < menuItems.length && i !== 0) {
-        const imageUrl = menuItems[index].image_url
-        if (imageUrl) {
-          preloadImage(imageUrl)
-        }
-      }
-    }
-  }, [menuItems])
-
-  // Filter menu items by selected category and search query
-  const filteredMenuItems = menuItems.filter(item => {
-    const matchesCategory = selectedCategory ? item.category_id === selectedCategory : true
+  // Filtrelenmiş menü öğeleri
+  const filteredItems = items.filter((item) => {
+    const matchesCategory = !selectedCategory || selectedCategory === 'all' || item.category_id === selectedCategory;
     const matchesSearch = searchQuery.trim() === '' ? true : (
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase())
+      (item.description?.toLowerCase() || '').includes(searchQuery.toLowerCase())
     )
     return matchesCategory && matchesSearch
   })
 
-  return (
-    <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Menu Management</h1>
-        <div className="space-x-2">
-          <Button onClick={() => document.getElementById('csv-upload')?.click()} disabled={isUploading}>
-            <FileSpreadsheet className="h-4 w-4 mr-2" />
-            {isUploading ? 'Importing...' : 'Import CSV'}
-          </Button>
-          <input
-            id="csv-upload"
-            type="file"
-            accept=".csv"
-            className="hidden"
-            onChange={handleCSVUpload}
-          />
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Item
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-3xl">
-              <DialogHeader>
-                <DialogTitle>Add New Menu Item</DialogTitle>
-              </DialogHeader>
-              
-              <Tabs defaultValue="basic" className="w-full">
-                <TabsList>
-                  <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                  <TabsTrigger value="customization">Customization</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="basic">
-                  <div className="space-y-4">
-                    <div>
-                      <Label>Name</Label>
-                      <Input
-                        value={newItem.name}
-                        onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>Description</Label>
-                      <Input
-                        value={newItem.description}
-                        onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>Price</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={newItem.price}
-                        onChange={(e) => setNewItem({ ...newItem, price: parseFloat(e.target.value) })}
-                      />
-                    </div>
-                    <div>
-                      <Label>Category</Label>
-                      <select
-                        className="w-full p-2 border rounded-md"
-                        value={newItem.category_id}
-                        onChange={(e) => setNewItem({ ...newItem, category_id: e.target.value })}
-                      >
-                        <option value="">Select a category</option>
-                        {categories.map((category) => (
-                          <option key={category.id} value={category.id}>
-                            {category.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="customization">
-                  <div className="space-y-6">
-                    <div className="space-y-4">
-                      <Label>Item Type</Label>
-                      <div className="flex gap-4">
-                        <Button
-                          variant={customizationOptions.type === 'burger' ? 'default' : 'outline'}
-                          onClick={() => setCustomizationOptions(prev => ({ ...prev, type: 'burger' }))}
-                        >
-                          Burger
-                        </Button>
-                        <Button
-                          variant={customizationOptions.type === 'coffee' ? 'default' : 'outline'}
-                          onClick={() => setCustomizationOptions(prev => ({ ...prev, type: 'coffee' }))}
-                        >
-                          Coffee
-                        </Button>
-                        <Button
-                          variant={customizationOptions.type === null ? 'default' : 'outline'}
-                          onClick={() => setCustomizationOptions(prev => ({ ...prev, type: null }))}
-                        >
-                          None
-                        </Button>
-                      </div>
-                    </div>
-
-                    {customizationOptions.type === 'burger' && (
-                      <>
-                        <div className="space-y-4">
-                          <Label>Extras</Label>
-                          <div className="grid gap-4">
-                            {Object.entries(customizationOptions.extras).map(([name, price]) => (
-                              <div key={name} className="flex items-center gap-4">
-                                <Input
-                                  value={name}
-                                  onChange={(e) => {
-                                    const newExtras = { ...customizationOptions.extras }
-                                    delete newExtras[name]
-                                    newExtras[e.target.value] = price
-                                    setCustomizationOptions(prev => ({
-                                      ...prev,
-                                      extras: newExtras
-                                    }))
-                                  }}
-                                  placeholder="Extra name"
-                                />
-                                <Input
-                                  type="number"
-                                  value={price}
-                                  onChange={(e) => {
-                                    setCustomizationOptions(prev => ({
-                                      ...prev,
-                                      extras: {
-                                        ...prev.extras,
-                                        [name]: parseFloat(e.target.value)
-                                      }
-                                    }))
-                                  }}
-                                  placeholder="Price"
-                                  className="w-24"
-                                />
-                                <Button
-                                  variant="destructive"
-                                  size="icon"
-                                  onClick={() => {
-                                    const newExtras = { ...customizationOptions.extras }
-                                    delete newExtras[name]
-                                    setCustomizationOptions(prev => ({
-                                      ...prev,
-                                      extras: newExtras
-                                    }))
-                                  }}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            ))}
-                            <Button
-                              variant="outline"
-                              onClick={() => {
-                                setCustomizationOptions(prev => ({
-                                  ...prev,
-                                  extras: {
-                                    ...prev.extras,
-                                    'New Extra': 0
-                                  }
-                                }))
-                              }}
-                            >
-                              Add Extra
-                            </Button>
-                          </div>
-                        </div>
-
-                        <div className="space-y-4">
-                          <Label>Sides</Label>
-                          <div className="grid gap-4">
-                            {Object.entries(customizationOptions.sides).map(([name, price]) => (
-                              <div key={name} className="flex items-center gap-4">
-                                <Input
-                                  value={name}
-                                  onChange={(e) => {
-                                    const newSides = { ...customizationOptions.sides }
-                                    delete newSides[name]
-                                    newSides[e.target.value] = price
-                                    setCustomizationOptions(prev => ({
-                                      ...prev,
-                                      sides: newSides
-                                    }))
-                                  }}
-                                  placeholder="Side name"
-                                />
-                                <Input
-                                  type="number"
-                                  value={price}
-                                  onChange={(e) => {
-                                    setCustomizationOptions(prev => ({
-                                      ...prev,
-                                      sides: {
-                                        ...prev.sides,
-                                        [name]: parseFloat(e.target.value)
-                                      }
-                                    }))
-                                  }}
-                                  placeholder="Price"
-                                  className="w-24"
-                                />
-                                <Button
-                                  variant="destructive"
-                                  size="icon"
-                                  onClick={() => {
-                                    const newSides = { ...customizationOptions.sides }
-                                    delete newSides[name]
-                                    setCustomizationOptions(prev => ({
-                                      ...prev,
-                                      sides: newSides
-                                    }))
-                                  }}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            ))}
-                            <Button
-                              variant="outline"
-                              onClick={() => {
-                                setCustomizationOptions(prev => ({
-                                  ...prev,
-                                  sides: {
-                                    ...prev.sides,
-                                    'New Side': 0
-                                  }
-                                }))
-                              }}
-                            >
-                              Add Side
-                            </Button>
-                          </div>
-                        </div>
-                      </>
-                    )}
-
-                    {customizationOptions.type === 'coffee' && (
-                      <>
-                        <div className="space-y-4">
-                          <Label>Sizes</Label>
-                          <div className="grid gap-4">
-                            {Object.entries(customizationOptions.sizes).map(([name, price]) => (
-                              <div key={name} className="flex items-center gap-4">
-                                <Input
-                                  value={name}
-                                  onChange={(e) => {
-                                    const newSizes = { ...customizationOptions.sizes }
-                                    delete newSizes[name]
-                                    newSizes[e.target.value] = price
-                                    setCustomizationOptions(prev => ({
-                                      ...prev,
-                                      sizes: newSizes
-                                    }))
-                                  }}
-                                  placeholder="Size name"
-                                />
-                                <Input
-                                  type="number"
-                                  value={price}
-                                  onChange={(e) => {
-                                    setCustomizationOptions(prev => ({
-                                      ...prev,
-                                      sizes: {
-                                        ...prev.sizes,
-                                        [name]: parseFloat(e.target.value)
-                                      }
-                                    }))
-                                  }}
-                                  placeholder="Price"
-                                  className="w-24"
-                                />
-                                <Button
-                                  variant="destructive"
-                                  size="icon"
-                                  onClick={() => {
-                                    const newSizes = { ...customizationOptions.sizes }
-                                    delete newSizes[name]
-                                    setCustomizationOptions(prev => ({
-                                      ...prev,
-                                      sizes: newSizes
-                                    }))
-                                  }}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            ))}
-                            <Button
-                              variant="outline"
-                              onClick={() => {
-                                setCustomizationOptions(prev => ({
-                                  ...prev,
-                                  sizes: {
-                                    ...prev.sizes,
-                                    'New Size': 0
-                                  }
-                                }))
-                              }}
-                            >
-                              Add Size
-                            </Button>
-                          </div>
-                        </div>
-
-                        <div className="space-y-4">
-                          <Label>Milk Options</Label>
-                          <div className="grid gap-4">
-                            {Object.entries(customizationOptions.milk_options).map(([name, price]) => (
-                              <div key={name} className="flex items-center gap-4">
-                                <Input
-                                  value={name}
-                                  onChange={(e) => {
-                                    const newMilkOptions = { ...customizationOptions.milk_options }
-                                    delete newMilkOptions[name]
-                                    newMilkOptions[e.target.value] = price
-                                    setCustomizationOptions(prev => ({
-                                      ...prev,
-                                      milk_options: newMilkOptions
-                                    }))
-                                  }}
-                                  placeholder="Milk option name"
-                                />
-                                <Input
-                                  type="number"
-                                  value={price}
-                                  onChange={(e) => {
-                                    setCustomizationOptions(prev => ({
-                                      ...prev,
-                                      milk_options: {
-                                        ...prev.milk_options,
-                                        [name]: parseFloat(e.target.value)
-                                      }
-                                    }))
-                                  }}
-                                  placeholder="Price"
-                                  className="w-24"
-                                />
-                                <Button
-                                  variant="destructive"
-                                  size="icon"
-                                  onClick={() => {
-                                    const newMilkOptions = { ...customizationOptions.milk_options }
-                                    delete newMilkOptions[name]
-                                    setCustomizationOptions(prev => ({
-                                      ...prev,
-                                      milk_options: newMilkOptions
-                                    }))
-                                  }}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            ))}
-                            <Button
-                              variant="outline"
-                              onClick={() => {
-                                setCustomizationOptions(prev => ({
-                                  ...prev,
-                                  milk_options: {
-                                    ...prev.milk_options,
-                                    'New Milk Option': 0
-                                  }
-                                }))
-                              }}
-                            >
-                              Add Milk Option
-                            </Button>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </TabsContent>
-              </Tabs>
-
-              <DialogFooter>
-                <Button onClick={handleAddItem} className="w-full">
-                  Add Menu Item
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+  if (isLoading) {
+    return (
+      <div className="container mx-auto p-4">
+        <div className="flex items-center justify-center h-[60vh]">
+          <p className="text-lg text-muted-foreground">Loading menu...</p>
         </div>
       </div>
+    )
+  }
 
-      {/* Search and Filter Section */}
-      <div className="grid md:grid-cols-2 gap-4 mb-6">
-        {/* Category selector */}
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">Filter by Category</Label>
-          <select
-            className="w-full p-2 border rounded-md bg-white"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-          >
-            <option value="">All Categories</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </div>
+  return (
+    <div className="container mx-auto p-4 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Menu Management</h1>
+        <Button onClick={() => setIsModalOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Item
+        </Button>
+      </div>
 
-        {/* Search bar */}
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">Search Menu Items</Label>
+      <div className="flex gap-4">
+        <div className="flex-1">
           <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
             <Input
-              placeholder="Search by name or description..."
-              className="pl-8"
+              placeholder="Search menu items..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
             />
           </div>
         </div>
+        <Select 
+          value={selectedCategory || undefined} 
+          onValueChange={setSelectedCategory}
+        >
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="All Categories" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            {categories.map((category) => (
+              <SelectItem key={category.id} value={category.id}>
+                {category.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* CSV Import Instructions Card */}
-      <Card className="p-4 mb-6">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold mb-2">CSV Import Instructions</h2>
-          <p className="text-sm text-muted-foreground">
-            Your CSV file should include the following columns:
-          </p>
-          <ul className="list-disc list-inside text-sm text-muted-foreground ml-4 mt-2">
-            <li>name (required) - The name of the menu item</li>
-            <li>description (required) - A description of the menu item</li>
-            <li>price (required) - The price in decimal format (e.g., 9.99)</li>
-            <li>category (required) - One of: Appetizers, Main Courses, Burgers & Sandwiches, Pasta & Risotto, Salads, Desserts, Beverages, Side Dishes</li>
-          </ul>
-        </div>
-      </Card>
-
-      {/* Menu Items Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredMenuItems.length > 0 ? (
-          filteredMenuItems.map((item) => (
-            <MenuItemCard
-              key={item.id}
-              item={item}
-              onUpdate={fetchMenuItems}
-              onDelete={handleDeleteItem}
-              categories={categories}
-            />
-          ))
-        ) : (
-          <div className="col-span-full text-center py-8 text-gray-500">
-            No menu items found. Try adjusting your search or category filter.
-          </div>
-        )}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredItems.map((item) => (
+          <MenuItemCard
+            key={item.id}
+            item={item}
+            categories={categories}
+            onEdit={(updates) => handleUpdateItem(item.id, updates)}
+            onDelete={() => handleDeleteItem(item.id)}
+          />
+        ))}
       </div>
+
+      <NewItemModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleCreateItem}
+        categories={categories}
+      />
     </div>
   )
 } 

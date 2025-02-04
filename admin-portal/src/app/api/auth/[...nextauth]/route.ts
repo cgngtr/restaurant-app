@@ -4,6 +4,7 @@ import { SupabaseAdapter } from '@auth/supabase-adapter'
 import { Adapter } from 'next-auth/adapters'
 import EmailProvider from 'next-auth/providers/email'
 import { supabase } from '@/lib/supabase'
+import { AuthOptions } from 'next-auth'
 
 export const authOptions: NextAuthOptions = {
   adapter: SupabaseAdapter({
@@ -12,15 +13,16 @@ export const authOptions: NextAuthOptions = {
   }) as Adapter,
   providers: [
     EmailProvider({
-      server: {
+      server: process.env.EMAIL_SERVER || {
         host: process.env.EMAIL_SERVER_HOST,
-        port: process.env.EMAIL_SERVER_PORT,
+        port: Number(process.env.EMAIL_SERVER_PORT),
         auth: {
           user: process.env.EMAIL_SERVER_USER,
           pass: process.env.EMAIL_SERVER_PASSWORD,
         },
       },
       from: process.env.EMAIL_FROM,
+      maxAge: 24 * 60 * 60, // 24 hours
     }),
   ],
   pages: {
@@ -34,32 +36,31 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async session({ session, token }) {
-      if (session.user && token) {
-        session.user.id = token.sub
-        
-        // Add restaurant access check here
+      if (session?.user?.email) {
         const { data: restaurant } = await supabase
           .from('restaurants')
           .select('id')
           .eq('contact_email', session.user.email)
-          .single()
+          .single();
 
-        if (!restaurant) {
-          throw new Error('Unauthorized')
-        }
-        
-        session.user.restaurantId = restaurant.id
+        return {
+          ...session,
+          user: {
+            ...session.user,
+            restaurantId: restaurant?.id,
+          },
+        };
       }
-      return session
+      return session;
     },
     async jwt({ token, user }) {
       if (user) {
-        token.sub = user.id
-        token.restaurantId = user.restaurantId
+        token.restaurantId = user.restaurantId;
       }
-      return token
-    }
-  }
+      return token;
+    },
+  },
+  debug: process.env.NODE_ENV === 'development',
 }
 
 const handler = NextAuth(authOptions)

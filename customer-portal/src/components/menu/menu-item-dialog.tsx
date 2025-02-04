@@ -196,13 +196,15 @@ export function MenuItemDialog({ item, open, onOpenChange }: MenuItemDialogProps
             {/* Dietary flags */}
             {item.dietary_flags && (
               <div className="flex flex-wrap gap-2">
-                {item.dietary_flags.map((flag) => (
-                  <span 
-                    key={flag} 
-                    className="text-xs font-medium bg-secondary/30 text-secondary-foreground px-2.5 py-1 rounded-full"
-                  >
-                    {flag}
-                  </span>
+                {Object.entries(item.dietary_flags).map(([flag, value]) => (
+                  value && (
+                    <span 
+                      key={flag} 
+                      className="text-xs font-medium bg-secondary/30 text-secondary-foreground px-2.5 py-1 rounded-full"
+                    >
+                      {flag.charAt(0).toUpperCase() + flag.slice(1)}
+                    </span>
+                  )
                 ))}
               </div>
             )}

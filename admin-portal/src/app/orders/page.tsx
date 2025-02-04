@@ -2,61 +2,57 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { OrderWithDetails } from '@/types/orders';
+import type { OrderWithDetails } from '@/types/order';
 import { OrderList } from '@/components/orders/order-list';
 import { OrderDetails } from '@/components/orders/order-details';
 import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
 
+const HARDCODED_RESTAURANT_ID = '2f3c2e2e-6166-4f32-a0d9-6083548cac83';
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<OrderWithDetails | null>(null);
-  const restaurantId = 'rest_demo1'; // For testing purposes
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchOrders = async () => {
-    console.log('Fetching orders for restaurant:', restaurantId);
-    
-    const { data, error } = await supabase
-      .from('orders')
-      .select(`
-        *,
-        table:tables(table_number),
-        order_items(
+    try {
+      const { data: ordersData, error } = await supabase
+        .from('orders')
+        .select(`
           *,
-          menu_item:menu_items(name, description)
-        )
-      `)
-      .eq('restaurant_id', restaurantId)
-      .order('created_at', { ascending: false });
+          table:tables(table_number),
+          order_items(
+            *,
+            menu_item:menu_items(name, description)
+          )
+        `)
+        .eq('restaurant_id', HARDCODED_RESTAURANT_ID)
+        .order('created_at', { ascending: false });
 
-    if (error) {
+      if (error) {
+        throw error;
+      }
+
+      console.log('Fetched orders:', ordersData);
+      setOrders(ordersData);
+      setIsLoading(false);
+    } catch (error) {
       console.error('Error fetching orders:', error);
       toast({
         title: 'Error',
         description: 'Failed to fetch orders',
         variant: 'destructive',
       });
-      return;
-    }
-
-    console.log('Current orders in database:', data);
-    setOrders(data as OrderWithDetails[]);
-
-    // Update selected order if it exists in the new data
-    if (selectedOrder) {
-      const updatedSelectedOrder = data?.find(order => order.id === selectedOrder.id) as OrderWithDetails;
-      if (updatedSelectedOrder) {
-        setSelectedOrder(updatedSelectedOrder);
-      }
     }
   };
 
+  // Set up real-time subscriptions
   useEffect(() => {
     console.log('Setting up real-time subscription...');
     fetchOrders();
 
-    // Subscribe to orders table changes
     const ordersSubscription = supabase
       .channel('orders-changes')
       .on(
@@ -65,88 +61,72 @@ export default function OrdersPage() {
           event: '*',
           schema: 'public',
           table: 'orders',
-          filter: `restaurant_id=eq.${restaurantId}`,
+          filter: `restaurant_id=eq.${HARDCODED_RESTAURANT_ID}`,
         },
-        async (payload) => {
+        (payload) => {
           console.log('Orders change received:', payload);
-          
-          const { eventType, new: newRecord, old: oldRecord } = payload;
-          
-          if (eventType === 'INSERT') {
-            toast({
-              title: 'New Order',
-              description: `New order received for Table ${newRecord.table_number}`,
-            });
-          } else if (eventType === 'UPDATE') {
-            toast({
-              title: 'Order Updated',
-              description: `Order status changed to ${newRecord.status}`,
-            });
-          }
-
-          // Refresh orders after any change
-          await fetchOrders();
+          fetchOrders();
         }
       )
-      .subscribe((status) => {
-        console.log('Orders subscription status:', status);
-      });
-
-    // Subscribe to order_items table changes
-    const orderItemsSubscription = supabase
-      .channel('order-items-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'order_items',
-        },
-        async (payload) => {
-          console.log('Order items change received:', payload);
-          // Refresh orders to get updated items
-          await fetchOrders();
-        }
-      )
-      .subscribe((status) => {
-        console.log('Order items subscription status:', status);
-      });
+      .subscribe();
 
     return () => {
       console.log('Cleaning up subscriptions...');
       ordersSubscription.unsubscribe();
-      orderItemsSubscription.unsubscribe();
     };
   }, []);
 
-  const handleStatusChange = async (orderId: string, newStatus: string) => {
+  const handleStatusChange = async (orderId: string, newStatus: OrderWithDetails['status']) => {
     console.log('Updating order status:', orderId, newStatus);
     
-    const { error } = await supabase
-      .from('orders')
-      .update({ status: newStatus })
-      .eq('id', orderId);
+    try {
+      // First, update the local state optimistically
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
+          order.id === orderId
+            ? { ...order, status: newStatus }
+            : order
+        )
+      );
 
-    if (error) {
+      if (selectedOrder?.id === orderId) {
+        setSelectedOrder(prev => 
+          prev ? { ...prev, status: newStatus } : null
+        );
+      }
+
+      // Then, update in Supabase
+      const { error } = await supabase
+        .from('orders')
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: 'Status Updated',
+        description: `Order status changed to ${newStatus}`,
+      });
+    } catch (error) {
       console.error('Error updating order status:', error);
+      
+      // Revert the optimistic update on error
+      await fetchOrders();
+      
       toast({
         title: 'Error',
         description: 'Failed to update order status',
         variant: 'destructive',
       });
-      return;
     }
-
-    // No need to call fetchOrders here as the real-time subscription will handle it
-    toast({
-      title: 'Status Updated',
-      description: `Order status changed to ${newStatus}`,
-    });
   };
 
   const handleClearAllOrders = async () => {
-    if (!process.env.NEXT_PUBLIC_DEVELOPMENT_MODE) return;
-    
     if (!confirm('⚠️ Are you sure you want to clear ALL orders? This action cannot be undone.')) {
       return;
     }
@@ -156,7 +136,7 @@ export default function OrdersPage() {
       const { data: orderIds } = await supabase
         .from('orders')
         .select('id')
-        .eq('restaurant_id', restaurantId);
+        .eq('restaurant_id', HARDCODED_RESTAURANT_ID);
 
       if (orderIds && orderIds.length > 0) {
         // Delete all order items for these orders
@@ -165,25 +145,20 @@ export default function OrdersPage() {
           .delete()
           .in('order_id', orderIds.map(order => order.id));
 
-        if (itemsError) {
-          console.error('Error deleting order items:', itemsError);
-          throw itemsError;
-        }
+        if (itemsError) throw itemsError;
       }
 
       // Then delete all orders
       const { error: ordersError } = await supabase
         .from('orders')
         .delete()
-        .eq('restaurant_id', restaurantId);
+        .eq('restaurant_id', HARDCODED_RESTAURANT_ID);
 
-      if (ordersError) {
-        console.error('Error deleting orders:', ordersError);
-        throw ordersError;
-      }
+      if (ordersError) throw ordersError;
 
-      setOrders([]); // Immediately clear the orders in the UI
-      setSelectedOrder(null); // Clear selected order
+      // Clear local state
+      setOrders([]);
+      setSelectedOrder(null);
 
       toast({
         title: 'Success',
@@ -199,21 +174,29 @@ export default function OrdersPage() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="container mx-auto p-4">
+        <div className="flex items-center justify-center h-[60vh]">
+          <p className="text-lg text-muted-foreground">Loading orders...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Live Orders</h1>
-        {process.env.NEXT_PUBLIC_DEVELOPMENT_MODE && (
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleClearAllOrders}
-            className="flex items-center gap-2"
-          >
-            <Trash2 className="h-4 w-4" />
-            Clear All Orders (Dev Only)
-          </Button>
-        )}
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={handleClearAllOrders}
+          className="flex items-center gap-2"
+        >
+          <Trash2 className="h-4 w-4" />
+          Clear All Orders
+        </Button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <OrderList 

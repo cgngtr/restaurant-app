@@ -1,13 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { Card } from '@/components/ui/card'
+import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { toast } from '@/components/ui/use-toast'
-import { Edit2, X, Trash2 } from 'lucide-react'
+import { Edit, X, Trash } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import {
   Dialog,
@@ -17,6 +17,18 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Database } from '@/types/supabase'
+import { formatCurrency } from '@/lib/utils'
+import Image from 'next/image'
+import { MenuItem } from '@/types/menu'
+
+interface CustomizationOptions {
+  type: 'burger' | 'coffee' | null;
+  extras: Record<string, number>;
+  sides: Record<string, number>;
+  sizes: Record<string, number>;
+  milk_options: Record<string, number>;
+}
 
 const DEFAULT_BURGER_OPTIONS = {
   extras: {
@@ -34,7 +46,7 @@ const DEFAULT_BURGER_OPTIONS = {
     'Side Salad': 3.00,
     'Coleslaw': 2.50
   }
-}
+} as const;
 
 const DEFAULT_COFFEE_OPTIONS = {
   sizes: {
@@ -49,38 +61,27 @@ const DEFAULT_COFFEE_OPTIONS = {
     'Soy Milk': 0.80,
     'Oat Milk': 0.80
   }
-}
+} as const;
 
-interface MenuItem {
-  id: string
-  name: string
-  description: string
-  price: number
-  category_id: string
-  category?: {
-    name: string
-  }
-  is_available: boolean
-  customization_options: {
-    type: 'burger' | 'coffee' | null
-    extras: Record<string, number>
-    sides: Record<string, number>
-    sizes: Record<string, number>
-    milk_options: Record<string, number>
-  }
-}
+type MenuCategory = Database['public']['Tables']['menu_categories']['Row']
 
 interface MenuItemCardProps {
   item: MenuItem
-  onUpdate: () => void
-  onDelete: (id: string) => void
-  categories: Array<{ id: string; name: string }>
+  categories: MenuCategory[]
+  onEdit: (updates: Partial<MenuItem>) => Promise<void>
+  onDelete: () => Promise<void>
 }
 
-export default function MenuItemCard({ item, onUpdate, onDelete, categories }: MenuItemCardProps) {
+export function MenuItemCard({ item, categories, onEdit, onDelete }: MenuItemCardProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editedItem, setEditedItem] = useState<MenuItem>(item)
-  const [customizationOptions, setCustomizationOptions] = useState(item.customization_options)
+  const [customizationOptions, setCustomizationOptions] = useState<CustomizationOptions>({
+    type: null,
+    extras: {},
+    sides: {},
+    sizes: {},
+    milk_options: {}
+  })
 
   const handleSave = async () => {
     try {
@@ -88,7 +89,7 @@ export default function MenuItemCard({ item, onUpdate, onDelete, categories }: M
         .from('menu_items')
         .update({
           ...editedItem,
-          customization_options: customizationOptions
+          dietary_flags: customizationOptions
         })
         .eq('id', item.id)
 
@@ -100,7 +101,7 @@ export default function MenuItemCard({ item, onUpdate, onDelete, categories }: M
       })
 
       setIsEditDialogOpen(false)
-      onUpdate()
+      onEdit(editedItem)
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -139,40 +140,52 @@ export default function MenuItemCard({ item, onUpdate, onDelete, categories }: M
   }
 
   return (
-    <Card className="p-4">
-      <div>
+    <Card className="overflow-hidden">
+      <div className="relative h-48">
+        {item.image_url ? (
+          <Image
+            src={item.image_url}
+            alt={item.name}
+            fill
+            className="object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+            <span className="text-gray-400">No image</span>
+          </div>
+        )}
+      </div>
+      
+      <div className="p-4">
         <div className="flex justify-between items-start mb-2">
           <div>
-            <h3 className="font-semibold">{item.name}</h3>
-            <p className="text-sm text-muted-foreground">{item.description}</p>
+            <h3 className="font-semibold text-lg">{item.name}</h3>
+            <p className="text-sm text-gray-500">{item.category?.name}</p>
           </div>
-          <div className="flex space-x-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsEditDialogOpen(true)}
-            >
-              <Edit2 className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onDelete(item.id)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
+          <p className="font-medium">{formatCurrency(item.price)}</p>
         </div>
+        
+        <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+          {item.description}
+        </p>
+        
         <div className="flex justify-between items-center">
-          <span className="text-lg font-semibold">${item.price.toFixed(2)}</span>
-          <span className={`text-sm ${item.is_available ? 'text-green-600' : 'text-red-600'}`}>
-            {item.is_available ? 'Available' : 'Unavailable'}
-          </span>
-        </div>
-        <div className="mt-2">
-          <span className="text-xs px-2 py-1 bg-gray-100 rounded-full">
-            {item.category?.name}
-          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsEditDialogOpen(true)}
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            Edit
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={onDelete}
+          >
+            <Trash className="h-4 w-4 mr-2" />
+            Delete
+          </Button>
         </div>
       </div>
 
@@ -200,7 +213,7 @@ export default function MenuItemCard({ item, onUpdate, onDelete, categories }: M
                 <div>
                   <Label>Description</Label>
                   <Input
-                    value={editedItem.description}
+                    value={editedItem.description || ''}
                     onChange={(e) => setEditedItem({ ...editedItem, description: e.target.value })}
                   />
                 </div>
@@ -276,24 +289,24 @@ export default function MenuItemCard({ item, onUpdate, onDelete, categories }: M
                                 const newExtras = { ...customizationOptions.extras }
                                 delete newExtras[name]
                                 newExtras[e.target.value] = price
-                                setCustomizationOptions(prev => ({
-                                  ...prev,
+                                setCustomizationOptions({
+                                  ...customizationOptions,
                                   extras: newExtras
-                                }))
+                                })
                               }}
                               placeholder="Extra name"
                             />
                             <Input
                               type="number"
-                              value={price}
+                              value={price.toString()}
                               onChange={(e) => {
-                                setCustomizationOptions(prev => ({
-                                  ...prev,
+                                setCustomizationOptions({
+                                  ...customizationOptions,
                                   extras: {
-                                    ...prev.extras,
+                                    ...customizationOptions.extras,
                                     [name]: parseFloat(e.target.value)
                                   }
-                                }))
+                                })
                               }}
                               placeholder="Price"
                               className="w-24"
@@ -304,10 +317,10 @@ export default function MenuItemCard({ item, onUpdate, onDelete, categories }: M
                               onClick={() => {
                                 const newExtras = { ...customizationOptions.extras }
                                 delete newExtras[name]
-                                setCustomizationOptions(prev => ({
-                                  ...prev,
+                                setCustomizationOptions({
+                                  ...customizationOptions,
                                   extras: newExtras
-                                }))
+                                })
                               }}
                             >
                               <X className="h-4 w-4" />
@@ -317,13 +330,13 @@ export default function MenuItemCard({ item, onUpdate, onDelete, categories }: M
                         <Button
                           variant="outline"
                           onClick={() => {
-                            setCustomizationOptions(prev => ({
-                              ...prev,
+                            setCustomizationOptions({
+                              ...customizationOptions,
                               extras: {
-                                ...prev.extras,
+                                ...customizationOptions.extras,
                                 'New Extra': 0
                               }
-                            }))
+                            })
                           }}
                         >
                           Add Extra
@@ -342,24 +355,24 @@ export default function MenuItemCard({ item, onUpdate, onDelete, categories }: M
                                 const newSides = { ...customizationOptions.sides }
                                 delete newSides[name]
                                 newSides[e.target.value] = price
-                                setCustomizationOptions(prev => ({
-                                  ...prev,
+                                setCustomizationOptions({
+                                  ...customizationOptions,
                                   sides: newSides
-                                }))
+                                })
                               }}
                               placeholder="Side name"
                             />
                             <Input
                               type="number"
-                              value={price}
+                              value={price.toString()}
                               onChange={(e) => {
-                                setCustomizationOptions(prev => ({
-                                  ...prev,
+                                setCustomizationOptions({
+                                  ...customizationOptions,
                                   sides: {
-                                    ...prev.sides,
+                                    ...customizationOptions.sides,
                                     [name]: parseFloat(e.target.value)
                                   }
-                                }))
+                                })
                               }}
                               placeholder="Price"
                               className="w-24"
@@ -370,10 +383,10 @@ export default function MenuItemCard({ item, onUpdate, onDelete, categories }: M
                               onClick={() => {
                                 const newSides = { ...customizationOptions.sides }
                                 delete newSides[name]
-                                setCustomizationOptions(prev => ({
-                                  ...prev,
+                                setCustomizationOptions({
+                                  ...customizationOptions,
                                   sides: newSides
-                                }))
+                                })
                               }}
                             >
                               <X className="h-4 w-4" />
@@ -383,13 +396,13 @@ export default function MenuItemCard({ item, onUpdate, onDelete, categories }: M
                         <Button
                           variant="outline"
                           onClick={() => {
-                            setCustomizationOptions(prev => ({
-                              ...prev,
+                            setCustomizationOptions({
+                              ...customizationOptions,
                               sides: {
-                                ...prev.sides,
+                                ...customizationOptions.sides,
                                 'New Side': 0
                               }
-                            }))
+                            })
                           }}
                         >
                           Add Side
@@ -412,24 +425,24 @@ export default function MenuItemCard({ item, onUpdate, onDelete, categories }: M
                                 const newSizes = { ...customizationOptions.sizes }
                                 delete newSizes[name]
                                 newSizes[e.target.value] = price
-                                setCustomizationOptions(prev => ({
-                                  ...prev,
+                                setCustomizationOptions({
+                                  ...customizationOptions,
                                   sizes: newSizes
-                                }))
+                                })
                               }}
                               placeholder="Size name"
                             />
                             <Input
                               type="number"
-                              value={price}
+                              value={price.toString()}
                               onChange={(e) => {
-                                setCustomizationOptions(prev => ({
-                                  ...prev,
+                                setCustomizationOptions({
+                                  ...customizationOptions,
                                   sizes: {
-                                    ...prev.sizes,
+                                    ...customizationOptions.sizes,
                                     [name]: parseFloat(e.target.value)
                                   }
-                                }))
+                                })
                               }}
                               placeholder="Price"
                               className="w-24"
@@ -440,10 +453,10 @@ export default function MenuItemCard({ item, onUpdate, onDelete, categories }: M
                               onClick={() => {
                                 const newSizes = { ...customizationOptions.sizes }
                                 delete newSizes[name]
-                                setCustomizationOptions(prev => ({
-                                  ...prev,
+                                setCustomizationOptions({
+                                  ...customizationOptions,
                                   sizes: newSizes
-                                }))
+                                })
                               }}
                             >
                               <X className="h-4 w-4" />
@@ -453,13 +466,13 @@ export default function MenuItemCard({ item, onUpdate, onDelete, categories }: M
                         <Button
                           variant="outline"
                           onClick={() => {
-                            setCustomizationOptions(prev => ({
-                              ...prev,
+                            setCustomizationOptions({
+                              ...customizationOptions,
                               sizes: {
-                                ...prev.sizes,
+                                ...customizationOptions.sizes,
                                 'New Size': 0
                               }
-                            }))
+                            })
                           }}
                         >
                           Add Size
@@ -478,24 +491,24 @@ export default function MenuItemCard({ item, onUpdate, onDelete, categories }: M
                                 const newMilkOptions = { ...customizationOptions.milk_options }
                                 delete newMilkOptions[name]
                                 newMilkOptions[e.target.value] = price
-                                setCustomizationOptions(prev => ({
-                                  ...prev,
+                                setCustomizationOptions({
+                                  ...customizationOptions,
                                   milk_options: newMilkOptions
-                                }))
+                                })
                               }}
                               placeholder="Milk option name"
                             />
                             <Input
                               type="number"
-                              value={price}
+                              value={price.toString()}
                               onChange={(e) => {
-                                setCustomizationOptions(prev => ({
-                                  ...prev,
+                                setCustomizationOptions({
+                                  ...customizationOptions,
                                   milk_options: {
-                                    ...prev.milk_options,
+                                    ...customizationOptions.milk_options,
                                     [name]: parseFloat(e.target.value)
                                   }
-                                }))
+                                })
                               }}
                               placeholder="Price"
                               className="w-24"
@@ -506,10 +519,10 @@ export default function MenuItemCard({ item, onUpdate, onDelete, categories }: M
                               onClick={() => {
                                 const newMilkOptions = { ...customizationOptions.milk_options }
                                 delete newMilkOptions[name]
-                                setCustomizationOptions(prev => ({
-                                  ...prev,
+                                setCustomizationOptions({
+                                  ...customizationOptions,
                                   milk_options: newMilkOptions
-                                }))
+                                })
                               }}
                             >
                               <X className="h-4 w-4" />
@@ -519,13 +532,13 @@ export default function MenuItemCard({ item, onUpdate, onDelete, categories }: M
                         <Button
                           variant="outline"
                           onClick={() => {
-                            setCustomizationOptions(prev => ({
-                              ...prev,
+                            setCustomizationOptions({
+                              ...customizationOptions,
                               milk_options: {
-                                ...prev.milk_options,
+                                ...customizationOptions.milk_options,
                                 'New Milk Option': 0
                               }
-                            }))
+                            })
                           }}
                         >
                           Add Milk Option

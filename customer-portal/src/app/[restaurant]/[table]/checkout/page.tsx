@@ -48,12 +48,6 @@ export default function CheckoutPage() {
     fetchRestaurant();
   }, [restaurantSlug]);
 
-  const generateOrderId = () => {
-    const timestamp = Date.now().toString(36)
-    const randomStr = Math.random().toString(36).substring(2, 8)
-    return `order_${timestamp}${randomStr}`
-  }
-
   const handleSubmitOrder = async () => {
     if (!restaurantData || !restaurantSlug || !tableNumber) {
       console.error('Required data not available');
@@ -87,8 +81,8 @@ export default function CheckoutPage() {
         throw updateError;
       }
 
-      // Create order with generated ID
-      const orderId = generateOrderId()
+      // Create order with UUID
+      const orderId = crypto.randomUUID()
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -111,11 +105,11 @@ export default function CheckoutPage() {
 
       // Create order items
       const orderItems = items.map(item => ({
-        id: `item_${generateOrderId()}`, // Generate unique ID for each item
+        id: crypto.randomUUID(), // Generate UUID for each item
         order_id: orderId,
         menu_item_id: item.id,
         quantity: item.quantity,
-        price_at_time: item.price,
+        unit_price: item.price,
         notes: item.special_instructions,
       }));
 

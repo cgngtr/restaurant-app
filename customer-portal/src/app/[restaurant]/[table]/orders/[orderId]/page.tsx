@@ -16,7 +16,7 @@ interface MenuItem {
 
 interface OrderItem {
   quantity: number
-  price_at_time: number
+  unit_price: number
   notes?: string
   menu_item: MenuItem
 }
@@ -85,7 +85,7 @@ export default function OrderStatusPage({ params }: Props) {
           table:tables(table_number),
           order_items(
             quantity,
-            price_at_time,
+            unit_price,
             notes,
             menu_item:menu_items(name, description)
           )
@@ -125,7 +125,7 @@ export default function OrderStatusPage({ params }: Props) {
               table:tables(table_number),
               order_items(
                 quantity,
-                price_at_time,
+                unit_price,
                 notes,
                 menu_item:menu_items(name, description)
               )
@@ -219,7 +219,7 @@ export default function OrderStatusPage({ params }: Props) {
                   )}
                 </div>
                 <p className="font-medium">
-                  {formatCurrency(item.price_at_time * item.quantity)}
+                  {formatCurrency(item.unit_price * item.quantity)}
                 </p>
               </div>
             ))}

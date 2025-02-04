@@ -26,7 +26,8 @@ interface RestaurantData {
 }
 
 async function getRestaurantData(slug: string, tableNumber: string): Promise<RestaurantData | null> {
-  const { data: restaurant } = await supabase
+  // Önce restaurant ve table verilerini al
+  const { data: restaurant, error: restaurantError } = await supabase
     .from('restaurants')
     .select(`
       id,
@@ -37,33 +38,45 @@ async function getRestaurantData(slug: string, tableNumber: string): Promise<Res
         id,
         table_number,
         status
-      ),
-      menu_categories (
-        id,
-        name,
-        sort_order,
-        active,
-        restaurant_id,
-        created_at
-      ),
-      menu_items (
-        id,
-        category_id,
-        name,
-        description,
-        price,
-        image_url,
-        is_available,
-        dietary_flags,
-        restaurant_id,
-        created_at
       )
     `)
     .eq('slug', slug)
     .eq('tables.table_number', tableNumber)
     .single()
 
-  return restaurant
+  if (restaurantError || !restaurant) {
+    console.error('Restaurant fetch error:', restaurantError)
+    return null
+  }
+
+  // Sonra menu kategorilerini al
+  const { data: categories, error: categoriesError } = await supabase
+    .from('menu_categories')
+    .select('*')
+    .eq('restaurant_id', restaurant.id)
+    .order('sort_order', { ascending: true })
+
+  if (categoriesError) {
+    console.error('Categories fetch error:', categoriesError)
+    return null
+  }
+
+  // Son olarak menu itemlarını al
+  const { data: items, error: itemsError } = await supabase
+    .from('menu_items')
+    .select('*')
+    .eq('restaurant_id', restaurant.id)
+
+  if (itemsError) {
+    console.error('Menu items fetch error:', itemsError)
+    return null
+  }
+
+  return {
+    ...restaurant,
+    menu_categories: categories || [],
+    menu_items: items || []
+  }
 }
 
 interface PageProps {

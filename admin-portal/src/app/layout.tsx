@@ -8,6 +8,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { Sidebar } from '@/components/layout/sidebar';
 import { QueryProvider } from '@/providers/query-provider';
 import { ParallelDataProvider } from '@/providers/parallel-data-provider';
+import { SessionProvider } from 'next-auth/react';
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -23,23 +24,25 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
-        <Suspense fallback={<LoadingState />}>
-          <QueryProvider>
-            <ParallelDataProvider>
-              <div className="flex min-h-screen bg-gray-100">
-                <Sidebar />
-                <div className="flex-1 md:ml-64">
-                  <main className="p-8">
-                    <Suspense fallback={<LoadingState />}>
-                      {children}
-                    </Suspense>
-                  </main>
+        <SessionProvider>
+          <Suspense fallback={<LoadingState />}>
+            <QueryProvider>
+              <ParallelDataProvider>
+                <div className="flex min-h-screen bg-gray-100">
+                  <Sidebar />
+                  <div className="flex-1 md:ml-64">
+                    <main className="p-8">
+                      <Suspense fallback={<LoadingState />}>
+                        {children}
+                      </Suspense>
+                    </main>
+                  </div>
                 </div>
-              </div>
-            </ParallelDataProvider>
-            <Toaster />
-          </QueryProvider>
-        </Suspense>
+              </ParallelDataProvider>
+            </QueryProvider>
+          </Suspense>
+          <Toaster />
+        </SessionProvider>
       </body>
     </html>
   );

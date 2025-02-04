@@ -16,6 +16,7 @@ import {
   Table as TableIcon
 } from 'lucide-react'
 import Link from 'next/link'
+import { formatCurrency } from '@/lib/utils'
 
 interface OrderData {
   id: string
@@ -60,9 +61,30 @@ const initialStats: DashboardStats = {
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats>(initialStats)
   const [isLoading, setIsLoading] = useState(true)
-  const restaurantId = 'rest_demo1' // For testing purposes
+  const [restaurantData, setRestaurantData] = useState<{ id: string } | null>(null)
+
+  // Fetch restaurant data first
+  useEffect(() => {
+    const fetchRestaurant = async () => {
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('id')
+        .single()
+
+      if (error) {
+        console.error('Error fetching restaurant:', error)
+        return
+      }
+
+      setRestaurantData(data)
+    }
+
+    fetchRestaurant()
+  }, [])
 
   const fetchDashboardStats = async () => {
+    if (!restaurantData?.id) return
+
     try {
       // Get today's date at midnight in the user's timezone
       const today = new Date()
@@ -72,7 +94,7 @@ export default function DashboardPage() {
       const { data: tablesData } = await supabase
         .from('tables')
         .select('status')
-        .eq('restaurant_id', restaurantId)
+        .eq('restaurant_id', restaurantData.id)
 
       const totalTables = tablesData?.length || 0
       const availableTables = tablesData?.filter(t => t.status === 'available').length || 0
@@ -90,7 +112,7 @@ export default function DashboardPage() {
             table_number
           )
         `)
-        .eq('restaurant_id', restaurantId)
+        .eq('restaurant_id', restaurantData.id)
         .order('created_at', { ascending: false })
         .returns<OrderData[]>()
 
@@ -99,7 +121,7 @@ export default function DashboardPage() {
       }
 
       const totalOrders = ordersData.length
-      const activeOrders = ordersData.filter(o => o.status !== 'completed').length
+      const activeOrders = ordersData.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length
       const completedOrders = ordersData.filter(o => o.status === 'completed').length
 
       // Calculate today's stats using the user's local timezone
@@ -138,48 +160,53 @@ export default function DashboardPage() {
     setIsLoading(false)
   }
 
+  // Fetch stats when restaurant data is available
   useEffect(() => {
-    fetchDashboardStats()
-    
-    // Set up real-time subscriptions
-    const ordersSubscription = supabase
-      .channel('dashboard-orders')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders',
-          filter: `restaurant_id=eq.${restaurantId}`
-        },
-        () => fetchDashboardStats()
-      )
-      .subscribe()
+    if (restaurantData?.id) {
+      fetchDashboardStats()
+      
+      // Set up real-time subscriptions
+      const ordersSubscription = supabase
+        .channel('dashboard-orders')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'orders',
+            filter: `restaurant_id=eq.${restaurantData.id}`
+          },
+          () => fetchDashboardStats()
+        )
+        .subscribe()
 
-    const tablesSubscription = supabase
-      .channel('dashboard-tables')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tables',
-          filter: `restaurant_id=eq.${restaurantId}`
-        },
-        () => fetchDashboardStats()
-      )
-      .subscribe()
+      const tablesSubscription = supabase
+        .channel('dashboard-tables')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'tables',
+            filter: `restaurant_id=eq.${restaurantData.id}`
+          },
+          () => fetchDashboardStats()
+        )
+        .subscribe()
 
-    return () => {
-      ordersSubscription.unsubscribe()
-      tablesSubscription.unsubscribe()
+      return () => {
+        ordersSubscription.unsubscribe()
+        tablesSubscription.unsubscribe()
+      }
     }
-  }, [])
+  }, [restaurantData])
 
   if (isLoading) {
     return (
       <div className="container mx-auto p-4">
-        <p className="text-center">Loading dashboard...</p>
+        <div className="flex items-center justify-center h-[60vh]">
+          <p className="text-lg text-muted-foreground">Loading dashboard...</p>
+        </div>
       </div>
     )
   }
@@ -210,7 +237,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Today's Revenue</p>
-              <h3 className="text-2xl font-bold">${stats.todayRevenue.toFixed(2)}</h3>
+              <h3 className="text-2xl font-bold">{formatCurrency(stats.todayRevenue)}</h3>
             </div>
             <DollarSign className="h-8 w-8 text-green-500" />
           </div>
@@ -247,83 +274,34 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Tables Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Available Tables</h3>
-            <div className="flex items-center text-green-500">
-              <ArrowUp className="h-4 w-4 mr-1" />
-              {stats.availableTables}
-            </div>
-          </div>
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Total Tables</span>
-            <span>{stats.totalTables}</span>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Occupied Tables</h3>
-            <div className="flex items-center text-yellow-500">
-              <ArrowUp className="h-4 w-4 mr-1" />
-              {stats.occupiedTables}
-            </div>
-          </div>
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Total Tables</span>
-            <span>{stats.totalTables}</span>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Orders Overview</h3>
-            <div className="flex items-center text-blue-500">
-              <ArrowUp className="h-4 w-4 mr-1" />
-              {stats.totalOrders}
-            </div>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>Active</span>
-              <span>{stats.activeOrders}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>Completed</span>
-              <span>{stats.completedOrders}</span>
-            </div>
-          </div>
-        </Card>
-      </div>
-
       {/* Recent Orders */}
       <Card className="p-4">
-        <h3 className="font-semibold mb-4">Recent Orders</h3>
+        <h2 className="text-lg font-semibold mb-4">Recent Orders</h2>
         <div className="space-y-4">
           {stats.recentOrders.map((order) => (
-            <div key={order.id} className="flex items-center justify-between border-b pb-2">
+            <div key={order.id} className="flex items-center justify-between p-2 hover:bg-accent rounded-lg">
               <div>
                 <p className="font-medium">Table {order.table.table_number}</p>
                 <p className="text-sm text-muted-foreground">
                   {new Date(order.created_at).toLocaleTimeString()}
                 </p>
               </div>
-              <div className="flex items-center space-x-4">
-                <p className="font-medium">${order.total_amount.toFixed(2)}</p>
-                <div className={`px-2 py-1 rounded-full text-xs ${
-                  order.status === 'completed' 
-                    ? 'bg-green-100 text-green-800'
-                    : order.status === 'preparing'
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'bg-yellow-100 text-yellow-800'
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-medium">{formatCurrency(order.total_amount)}</span>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  order.status === 'completed' ? 'bg-green-100 text-green-800' :
+                  order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                  order.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
+                  'bg-yellow-100 text-yellow-800'
                 }`}>
                   {order.status}
-                </div>
+                </span>
               </div>
             </div>
           ))}
+          {stats.recentOrders.length === 0 && (
+            <p className="text-center text-muted-foreground">No recent orders</p>
+          )}
         </div>
       </Card>
     </div>

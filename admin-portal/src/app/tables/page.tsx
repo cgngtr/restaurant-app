@@ -24,45 +24,72 @@ interface TableStats {
 export default function TablesPage() {
   const [tables, setTables] = useState<TableStats[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const restaurantId = 'rest_demo1' // For testing purposes
+  const [restaurantData, setRestaurantData] = useState<{ id: string } | null>(null)
+
+  // Fetch restaurant data first
+  useEffect(() => {
+    const fetchRestaurant = async () => {
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('id')
+        .single()
+
+      if (error) {
+        console.error('Error fetching restaurant:', error)
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch restaurant data',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      setRestaurantData(data)
+    }
+
+    fetchRestaurant()
+  }, [])
 
   const fetchTables = async () => {
+    if (!restaurantData?.id) return
+
     console.log('Fetching tables...')
     try {
-      // First get all tables
-      const { data: tablesData, error: tablesError } = await supabase
+      // Get tables with orders in a single query
+      const { data, error } = await supabase
         .from('tables')
-        .select('id, table_number, status')
-        .eq('restaurant_id', restaurantId)
+        .select(`
+          id,
+          table_number,
+          status,
+          orders (
+            id,
+            status,
+            total_amount
+          )
+        `)
+        .eq('restaurant_id', restaurantData.id)
         .order('table_number')
 
-      if (tablesError) throw tablesError
+      if (error) throw error
 
-      // For each table, get their stats
-      const tablesWithStats = await Promise.all(
-        (tablesData || []).map(async (table) => {
-          // Get all orders for this table
-          const { data: ordersData } = await supabase
-            .from('orders')
-            .select('id, status, total_amount')
-            .eq('table_id', table.id)
+      // Process the data
+      const tablesWithStats = (data || []).map(table => {
+        const orders = table.orders || []
+        const total_revenue = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0)
+        const active_order = orders.find(order => 
+          order.status !== 'completed' && order.status !== 'cancelled'
+        )
 
-          const orders = ordersData || []
-          const total_revenue = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0)
-          
-          // Get active order if any
-          const active_order = orders.find(order => 
-            order.status !== 'completed' && order.status !== 'cancelled'
-          )
-
-          return {
-            ...table,
-            total_orders: orders.length,
-            total_revenue,
-            active_order: active_order || undefined
-          }
-        })
-      )
+        return {
+          id: table.id,
+          table_number: table.table_number,
+          status: table.status,
+          total_orders: orders.length,
+          total_revenue,
+          active_order: active_order || undefined
+        }
+      })
 
       setTables(tablesWithStats)
     } catch (error) {
@@ -76,27 +103,24 @@ export default function TablesPage() {
     setIsLoading(false)
   }
 
+  // Fetch tables when restaurant data is available
   useEffect(() => {
-    fetchTables()
-  }, [])
-
-  const generateTableId = () => {
-    const timestamp = Date.now().toString(36)
-    const randomStr = Math.random().toString(36).substring(2, 8)
-    return `table_${timestamp}${randomStr}`
-  }
+    if (restaurantData?.id) {
+      fetchTables()
+    }
+  }, [restaurantData])
 
   const createTable = async () => {
+    if (!restaurantData?.id) return
+
     const newTableNumber = (tables.length + 1).toString()
     
     try {
-      const tableId = generateTableId()
-      
       const { data, error } = await supabase
         .from('tables')
         .insert({
-          id: tableId,
-          restaurant_id: restaurantId,
+          id: crypto.randomUUID(),
+          restaurant_id: restaurantData.id,
           table_number: newTableNumber,
           status: 'available'
         })
@@ -122,26 +146,23 @@ export default function TablesPage() {
   }
 
   const createInitialTables = async () => {
+    if (!restaurantData?.id) return
+
     console.log('Creating initial tables...')
     setIsLoading(true)
     try {
-      for (let i = 1; i <= 5; i++) {
-        const tableId = generateTableId()
-        
-        const { error } = await supabase
-          .from('tables')
-          .insert({
-            id: tableId,
-            restaurant_id: restaurantId,
-            table_number: i.toString(),
-            status: 'available'
-          })
+      const tablesToCreate = Array.from({ length: 5 }, (_, i) => ({
+        id: crypto.randomUUID(),
+        restaurant_id: restaurantData.id,
+        table_number: (i + 1).toString(),
+        status: 'available'
+      }))
 
-        if (error) {
-          console.error(`Error creating table ${i}:`, error)
-          throw error
-        }
-      }
+      const { error } = await supabase
+        .from('tables')
+        .insert(tablesToCreate)
+
+      if (error) throw error
 
       await fetchTables() // Refresh the list to get stats
       
