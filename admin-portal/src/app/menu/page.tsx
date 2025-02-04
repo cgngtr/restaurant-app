@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/use-toast'
-import { FileSpreadsheet, Plus, Search } from 'lucide-react'
+import { FileSpreadsheet, Plus, Search, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import MenuItemCard from '@/components/menu/MenuItemCard'
 import {
@@ -14,8 +14,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog"
 import { Label } from '@/components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Switch } from "@/components/ui/switch"
 
 interface MenuItem {
   id: string
@@ -26,6 +29,13 @@ interface MenuItem {
   restaurant_id: string
   image_url: string | null
   is_available: boolean
+  customization_options: {
+    type: 'burger' | 'coffee' | null
+    extras: Record<string, number>
+    sides: Record<string, number>
+    sizes: Record<string, number>
+    milk_options: Record<string, number>
+  }
 }
 
 interface Category {
@@ -33,6 +43,19 @@ interface Category {
   name: string
   sort_order: number
   restaurant_id: string
+}
+
+interface CustomizationOption {
+  name: string;
+  price: number;
+}
+
+interface CustomizationOptions {
+  type: 'burger' | 'coffee' | null;
+  extras: Record<string, number>;
+  sides: Record<string, number>;
+  sizes: Record<string, number>;
+  milk_options: Record<string, number>;
 }
 
 export default function MenuPage() {
@@ -47,7 +70,21 @@ export default function MenuPage() {
     description: '',
     price: 0,
     category_id: '',
-    is_available: true
+    is_available: true,
+    customization_options: {
+      type: null,
+      extras: {},
+      sides: {},
+      sizes: {},
+      milk_options: {}
+    }
+  })
+  const [customizationOptions, setCustomizationOptions] = useState<CustomizationOptions>({
+    type: null,
+    extras: {},
+    sides: {},
+    sizes: {},
+    milk_options: {}
   })
 
   useEffect(() => {
@@ -328,6 +365,7 @@ export default function MenuPage() {
         ...newItem,
         id: crypto.randomUUID(),
         restaurant_id: restaurant.id,
+        customization_options: customizationOptions
       }
 
       const { data, error } = await supabase
@@ -348,7 +386,21 @@ export default function MenuPage() {
         description: '',
         price: 0,
         category_id: '',
-        is_available: true
+        is_available: true,
+        customization_options: {
+          type: null,
+          extras: {},
+          sides: {},
+          sizes: {},
+          milk_options: {}
+        }
+      })
+      setCustomizationOptions({
+        type: null,
+        extras: {},
+        sides: {},
+        sizes: {},
+        milk_options: {}
       })
       fetchMenuItems()
     } catch (error: any) {
@@ -437,53 +489,366 @@ export default function MenuPage() {
                 Add Item
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-3xl">
               <DialogHeader>
                 <DialogTitle>Add New Menu Item</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label>Name</Label>
-                  <Input
-                    value={newItem.name}
-                    onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label>Description</Label>
-                  <Input
-                    value={newItem.description}
-                    onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label>Price</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={newItem.price}
-                    onChange={(e) => setNewItem({ ...newItem, price: parseFloat(e.target.value) })}
-                  />
-                </div>
-                <div>
-                  <Label>Category</Label>
-                  <select
-                    className="w-full p-2 border rounded-md"
-                    value={newItem.category_id}
-                    onChange={(e) => setNewItem({ ...newItem, category_id: e.target.value })}
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              
+              <Tabs defaultValue="basic" className="w-full">
+                <TabsList>
+                  <TabsTrigger value="basic">Basic Info</TabsTrigger>
+                  <TabsTrigger value="customization">Customization</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="basic">
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Name</Label>
+                      <Input
+                        value={newItem.name}
+                        onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label>Description</Label>
+                      <Input
+                        value={newItem.description}
+                        onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label>Price</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={newItem.price}
+                        onChange={(e) => setNewItem({ ...newItem, price: parseFloat(e.target.value) })}
+                      />
+                    </div>
+                    <div>
+                      <Label>Category</Label>
+                      <select
+                        className="w-full p-2 border rounded-md"
+                        value={newItem.category_id}
+                        onChange={(e) => setNewItem({ ...newItem, category_id: e.target.value })}
+                      >
+                        <option value="">Select a category</option>
+                        {categories.map((category) => (
+                          <option key={category.id} value={category.id}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="customization">
+                  <div className="space-y-6">
+                    <div className="space-y-4">
+                      <Label>Item Type</Label>
+                      <div className="flex gap-4">
+                        <Button
+                          variant={customizationOptions.type === 'burger' ? 'default' : 'outline'}
+                          onClick={() => setCustomizationOptions(prev => ({ ...prev, type: 'burger' }))}
+                        >
+                          Burger
+                        </Button>
+                        <Button
+                          variant={customizationOptions.type === 'coffee' ? 'default' : 'outline'}
+                          onClick={() => setCustomizationOptions(prev => ({ ...prev, type: 'coffee' }))}
+                        >
+                          Coffee
+                        </Button>
+                        <Button
+                          variant={customizationOptions.type === null ? 'default' : 'outline'}
+                          onClick={() => setCustomizationOptions(prev => ({ ...prev, type: null }))}
+                        >
+                          None
+                        </Button>
+                      </div>
+                    </div>
+
+                    {customizationOptions.type === 'burger' && (
+                      <>
+                        <div className="space-y-4">
+                          <Label>Extras</Label>
+                          <div className="grid gap-4">
+                            {Object.entries(customizationOptions.extras).map(([name, price]) => (
+                              <div key={name} className="flex items-center gap-4">
+                                <Input
+                                  value={name}
+                                  onChange={(e) => {
+                                    const newExtras = { ...customizationOptions.extras }
+                                    delete newExtras[name]
+                                    newExtras[e.target.value] = price
+                                    setCustomizationOptions(prev => ({
+                                      ...prev,
+                                      extras: newExtras
+                                    }))
+                                  }}
+                                  placeholder="Extra name"
+                                />
+                                <Input
+                                  type="number"
+                                  value={price}
+                                  onChange={(e) => {
+                                    setCustomizationOptions(prev => ({
+                                      ...prev,
+                                      extras: {
+                                        ...prev.extras,
+                                        [name]: parseFloat(e.target.value)
+                                      }
+                                    }))
+                                  }}
+                                  placeholder="Price"
+                                  className="w-24"
+                                />
+                                <Button
+                                  variant="destructive"
+                                  size="icon"
+                                  onClick={() => {
+                                    const newExtras = { ...customizationOptions.extras }
+                                    delete newExtras[name]
+                                    setCustomizationOptions(prev => ({
+                                      ...prev,
+                                      extras: newExtras
+                                    }))
+                                  }}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setCustomizationOptions(prev => ({
+                                  ...prev,
+                                  extras: {
+                                    ...prev.extras,
+                                    'New Extra': 0
+                                  }
+                                }))
+                              }}
+                            >
+                              Add Extra
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <Label>Sides</Label>
+                          <div className="grid gap-4">
+                            {Object.entries(customizationOptions.sides).map(([name, price]) => (
+                              <div key={name} className="flex items-center gap-4">
+                                <Input
+                                  value={name}
+                                  onChange={(e) => {
+                                    const newSides = { ...customizationOptions.sides }
+                                    delete newSides[name]
+                                    newSides[e.target.value] = price
+                                    setCustomizationOptions(prev => ({
+                                      ...prev,
+                                      sides: newSides
+                                    }))
+                                  }}
+                                  placeholder="Side name"
+                                />
+                                <Input
+                                  type="number"
+                                  value={price}
+                                  onChange={(e) => {
+                                    setCustomizationOptions(prev => ({
+                                      ...prev,
+                                      sides: {
+                                        ...prev.sides,
+                                        [name]: parseFloat(e.target.value)
+                                      }
+                                    }))
+                                  }}
+                                  placeholder="Price"
+                                  className="w-24"
+                                />
+                                <Button
+                                  variant="destructive"
+                                  size="icon"
+                                  onClick={() => {
+                                    const newSides = { ...customizationOptions.sides }
+                                    delete newSides[name]
+                                    setCustomizationOptions(prev => ({
+                                      ...prev,
+                                      sides: newSides
+                                    }))
+                                  }}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setCustomizationOptions(prev => ({
+                                  ...prev,
+                                  sides: {
+                                    ...prev.sides,
+                                    'New Side': 0
+                                  }
+                                }))
+                              }}
+                            >
+                              Add Side
+                            </Button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {customizationOptions.type === 'coffee' && (
+                      <>
+                        <div className="space-y-4">
+                          <Label>Sizes</Label>
+                          <div className="grid gap-4">
+                            {Object.entries(customizationOptions.sizes).map(([name, price]) => (
+                              <div key={name} className="flex items-center gap-4">
+                                <Input
+                                  value={name}
+                                  onChange={(e) => {
+                                    const newSizes = { ...customizationOptions.sizes }
+                                    delete newSizes[name]
+                                    newSizes[e.target.value] = price
+                                    setCustomizationOptions(prev => ({
+                                      ...prev,
+                                      sizes: newSizes
+                                    }))
+                                  }}
+                                  placeholder="Size name"
+                                />
+                                <Input
+                                  type="number"
+                                  value={price}
+                                  onChange={(e) => {
+                                    setCustomizationOptions(prev => ({
+                                      ...prev,
+                                      sizes: {
+                                        ...prev.sizes,
+                                        [name]: parseFloat(e.target.value)
+                                      }
+                                    }))
+                                  }}
+                                  placeholder="Price"
+                                  className="w-24"
+                                />
+                                <Button
+                                  variant="destructive"
+                                  size="icon"
+                                  onClick={() => {
+                                    const newSizes = { ...customizationOptions.sizes }
+                                    delete newSizes[name]
+                                    setCustomizationOptions(prev => ({
+                                      ...prev,
+                                      sizes: newSizes
+                                    }))
+                                  }}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setCustomizationOptions(prev => ({
+                                  ...prev,
+                                  sizes: {
+                                    ...prev.sizes,
+                                    'New Size': 0
+                                  }
+                                }))
+                              }}
+                            >
+                              Add Size
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <Label>Milk Options</Label>
+                          <div className="grid gap-4">
+                            {Object.entries(customizationOptions.milk_options).map(([name, price]) => (
+                              <div key={name} className="flex items-center gap-4">
+                                <Input
+                                  value={name}
+                                  onChange={(e) => {
+                                    const newMilkOptions = { ...customizationOptions.milk_options }
+                                    delete newMilkOptions[name]
+                                    newMilkOptions[e.target.value] = price
+                                    setCustomizationOptions(prev => ({
+                                      ...prev,
+                                      milk_options: newMilkOptions
+                                    }))
+                                  }}
+                                  placeholder="Milk option name"
+                                />
+                                <Input
+                                  type="number"
+                                  value={price}
+                                  onChange={(e) => {
+                                    setCustomizationOptions(prev => ({
+                                      ...prev,
+                                      milk_options: {
+                                        ...prev.milk_options,
+                                        [name]: parseFloat(e.target.value)
+                                      }
+                                    }))
+                                  }}
+                                  placeholder="Price"
+                                  className="w-24"
+                                />
+                                <Button
+                                  variant="destructive"
+                                  size="icon"
+                                  onClick={() => {
+                                    const newMilkOptions = { ...customizationOptions.milk_options }
+                                    delete newMilkOptions[name]
+                                    setCustomizationOptions(prev => ({
+                                      ...prev,
+                                      milk_options: newMilkOptions
+                                    }))
+                                  }}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setCustomizationOptions(prev => ({
+                                  ...prev,
+                                  milk_options: {
+                                    ...prev.milk_options,
+                                    'New Milk Option': 0
+                                  }
+                                }))
+                              }}
+                            >
+                              Add Milk Option
+                            </Button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              <DialogFooter>
                 <Button onClick={handleAddItem} className="w-full">
                   Add Menu Item
                 </Button>
-              </div>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
@@ -548,6 +913,7 @@ export default function MenuPage() {
               item={item}
               onUpdate={fetchMenuItems}
               onDelete={handleDeleteItem}
+              categories={categories}
             />
           ))
         ) : (
