@@ -31,10 +31,10 @@ const nextConfig = {
     // number of pages that should be kept simultaneously without being disposed
     pagesBufferLength: 5,
   },
-  // Increase timeout for development
   experimental: {
-    serverComponentsExternalPackages: ['sharp'],
-    timeoutInMs: 120000,
+    serverActions: {
+      bodySizeLimit: '2mb'
+    }
   }
 }
 

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useCartStore } from '@/store/cart-store'
 import { useToast } from '@/components/ui/use-toast'
+import { motion } from 'framer-motion'
 import { 
   ChevronLeft,
   Coffee,
@@ -18,13 +19,17 @@ import {
   Salad,
   IceCream,
   type LucideIcon,
-  Plus
+  Plus,
+  ShoppingCart
 } from 'lucide-react'
+import { MenuItemDialog } from './menu-item-dialog'
 
 type MenuItem = Database['public']['Tables']['menu_items']['Row']
 type MenuCategoryType = Database['public']['Tables']['menu_categories']['Row']
 
 interface MenuProps {
+  restaurantName: string
+  tableNumber: string
   categories: MenuCategoryType[]
   items: MenuItem[]
 }
@@ -53,14 +58,38 @@ function getRandomFallbackImage() {
   return DEFAULT_FOOD_IMAGES[Math.floor(Math.random() * DEFAULT_FOOD_IMAGES.length)];
 }
 
-export function Menu({ categories, items }: MenuProps) {
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+}
+
+const item = {
+  hidden: { opacity: 0, scale: 0.9 },
+  show: { 
+    opacity: 1, 
+    scale: 1,
+    transition: {
+      type: "spring",
+      stiffness: 260,
+      damping: 20
+    }
+  }
+}
+
+export function Menu({ restaurantName, tableNumber, categories, items }: MenuProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState<Record<string, boolean>>({})
   const addItem = useCartStore((state) => state.addItem)
+  const cartItems = useCartStore((state) => state.items)
   const { toast } = useToast()
   
-  // Sort categories by sort_order
   const sortedCategories = [...categories].sort((a, b) => a.sort_order - b.sort_order)
     .filter(category => category.active)
     .map(category => ({
@@ -101,16 +130,28 @@ export function Menu({ categories, items }: MenuProps) {
 
   return (
     <div className="space-y-4">
-      <Input
-        placeholder="Search menu items..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="mb-4"
-      />
-      
-      <ScrollArea className="h-[calc(100vh-220px)]">
-        {!selectedCategory ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+      <div className="sticky top-0 bg-background pt-1 pb-2 z-10">
+        {selectedCategory && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedCategory(null)}
+            className="-ml-2"
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Back
+          </Button>
+        )}
+      </div>
+
+      {!selectedCategory ? (
+        <ScrollArea className="h-[calc(100vh-220px)]">
+          <motion.div 
+            className="grid grid-cols-2 sm:grid-cols-3 gap-4"
+            variants={container}
+            initial="hidden"
+            animate="show"
+          >
             {sortedCategories.map((category) => {
               const itemCount = items.filter(
                 item => item.category_id === category.id && item.is_available
@@ -121,8 +162,9 @@ export function Menu({ categories, items }: MenuProps) {
               const Icon = category.icon
 
               return (
-                <div
+                <motion.div
                   key={category.id}
+                  variants={item}
                   className="p-6 border rounded-lg hover:bg-accent cursor-pointer text-center"
                   onClick={() => setSelectedCategory(category.id)}
                 >
@@ -131,76 +173,58 @@ export function Menu({ categories, items }: MenuProps) {
                   <p className="text-sm text-muted-foreground mt-1">
                     {itemCount} {itemCount === 1 ? 'item' : 'items'}
                   </p>
-                </div>
+                </motion.div>
               )
             })}
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="flex flex-col items-center text-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedCategory(null)}
-                className="self-start -ml-2 mb-6"
+          </motion.div>
+        </ScrollArea>
+      ) : (
+        <ScrollArea className="h-[calc(100vh-220px)]">
+          <motion.div 
+            className="grid grid-cols-2 sm:grid-cols-3 gap-4"
+            variants={container}
+            initial="hidden"
+            animate="show"
+          >
+            {filteredItems.map((menuItem) => (
+              <motion.div
+                key={menuItem.id}
+                layoutId={menuItem.id}
+                className="group relative overflow-hidden aspect-[4/3] border rounded-lg hover:bg-accent cursor-pointer"
+                onClick={() => setSelectedItem(menuItem)}
               >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Back to Categories
-              </Button>
-              {(() => {
-                const category = sortedCategories.find(c => c.id === selectedCategory);
-                const Icon = category?.icon || Coffee;
-                return (
-                  <>
-                    <Icon className="h-12 w-12 mb-2" />
-                    <h2 className="text-2xl font-semibold">{category?.name}</h2>
-                  </>
-                );
-              })()}
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {filteredItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="group relative overflow-hidden aspect-[4/3] border rounded-lg hover:bg-accent cursor-pointer"
-                  onClick={() => handleAddToCart(item)}
-                >
-                  <div className="relative w-full h-full">
-                    <img
-                      src={item.image_url || getRandomFallbackImage()}
-                      alt={item.name}
-                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                      onError={(e) => {
-                        const imgElement = e.target as HTMLImageElement;
-                        if (!imgElement.src.includes('fallback')) {
-                          imgElement.src = getRandomFallbackImage();
-                        }
-                      }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/40 to-black/20 group-hover:from-black/70 group-hover:via-black/50 group-hover:to-black/30 transition-colors" />
-                    <div className="absolute inset-0 p-4 flex flex-col justify-end">
-                      <h3 className="font-medium text-white">{item.name}</h3>
-                      <p className="text-sm text-white/80 line-clamp-2">{item.description}</p>
-                      <div className="flex items-center justify-between mt-2">
-                        <p className="font-medium text-white">${item.price.toFixed(2)}</p>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          disabled={loading[item.id] || !item.is_available}
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          {loading[item.id] ? 'Adding...' : item.is_available ? 'Add to Cart' : 'Sold Out'}
-                        </Button>
-                      </div>
+                <div className="relative w-full h-full">
+                  <img
+                    src={menuItem.image_url || getRandomFallbackImage()}
+                    alt={menuItem.name}
+                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                    onError={(e) => {
+                      const imgElement = e.target as HTMLImageElement;
+                      if (!imgElement.src.includes('fallback')) {
+                        imgElement.src = getRandomFallbackImage();
+                      }
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+                    <div className="absolute bottom-0 left-0 right-0 p-3">
+                      <h3 className="text-sm font-medium text-white line-clamp-2">{menuItem.name}</h3>
+                      <p className="text-sm font-medium text-white/90">${menuItem.price.toFixed(2)}</p>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </ScrollArea>
+              </motion.div>
+            ))}
+          </motion.div>
+        </ScrollArea>
+      )}
+
+      {selectedItem && (
+        <MenuItemDialog
+          item={selectedItem}
+          open={!!selectedItem}
+          onOpenChange={(open) => !open && setSelectedItem(null)}
+        />
+      )}
     </div>
   )
 } 

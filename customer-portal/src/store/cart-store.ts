@@ -6,14 +6,20 @@ import { Database } from '@/types/supabase'
 
 type MenuItem = Database['public']['Tables']['menu_items']['Row']
 
-interface CartItem extends MenuItem {
+interface MenuItemWithExtras extends MenuItem {
   quantity: number
   special_instructions?: string
+  extras?: {
+    size?: string;
+    milk?: string;
+    side?: string;
+    extras?: Record<string, number>;
+  }
 }
 
 interface CartStore {
-  items: CartItem[]
-  addItem: (item: MenuItem) => void
+  items: MenuItemWithExtras[]
+  addItem: (item: MenuItem & { extras?: MenuItemWithExtras['extras'] }) => void
   removeItem: (itemId: string) => void
   updateQuantity: (itemId: string, quantity: number) => void
   updateSpecialInstructions: (itemId: string, instructions: string) => void
@@ -26,24 +32,12 @@ export const useCartStore = create<CartStore>()(
     (set, get) => ({
       items: [],
       
-      addItem: (item) => set((state) => {
-        const existingItem = state.items.find((i) => i.id === item.id)
-        if (existingItem) {
-          return {
-            items: state.items.map((i) =>
-              i.id === item.id
-                ? { ...i, quantity: i.quantity + 1 }
-                : i
-            ),
-          }
-        }
-        return {
-          items: [...state.items, { ...item, quantity: 1 }],
-        }
-      }),
+      addItem: (item) => set((state) => ({ 
+        items: [...state.items, { ...item, quantity: 1 }] as MenuItemWithExtras[] 
+      })),
 
-      removeItem: (itemId) => set((state) => ({
-        items: state.items.filter((i) => i.id !== itemId),
+      removeItem: (itemId) => set((state) => ({ 
+        items: state.items.filter((item) => item.id !== itemId)
       })),
 
       updateQuantity: (itemId, quantity) => set((state) => {
