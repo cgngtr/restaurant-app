@@ -4,24 +4,23 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import {
-  Users,
-  Utensils,
-  Clock,
-  CheckCircle,
-  ChefHat,
-  DollarSign,
-  ArrowUp,
-  ArrowDown,
-  Table as TableIcon
-} from 'lucide-react'
 import Link from 'next/link'
-import { formatCurrency } from '@/lib/utils'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import {
+  Clock,
+  Grid2X2 as Grid,
+  Settings,
+  Menu as MenuIcon,
+  ArrowUpRight,
+  DollarSign,
+  Timer,
+  LayoutGrid
+} from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { OrderDetails } from "@/components/orders/order-details"
 import { useQuery } from '@tanstack/react-query'
 import { OrderWithDetails } from '@/types/order'
 import type { Database } from '@/types/supabase'
+import { formatCurrency } from '@/lib/utils'
 
 interface OrderData {
   id: string
@@ -296,8 +295,203 @@ export default function DashboardPage() {
   }, [restaurantData])
 
   return (
-    <div className="flex flex-col space-y-4">
-      {/* Rest of the component content */}
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Dashboard</h1>
+          <p className="text-muted-foreground">Welcome back! Here's what's happening today.</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" className="h-9">
+            <Grid className="w-4 h-4 mr-2" />
+            Manage Tables
+          </Button>
+          <Button variant="default" className="h-9 bg-[#0F172A] hover:bg-[#0F172A]/90">
+            <Clock className="w-4 h-4 mr-2" />
+            View Orders
+          </Button>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-4 gap-4">
+        {/* Today's Revenue */}
+        <Card className="p-6 relative overflow-hidden">
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+            <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center">
+              <DollarSign className="w-6 h-6 text-emerald-500" />
+            </div>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Today's Revenue</p>
+            <div className="flex items-baseline gap-2 mt-2">
+              <p className="text-2xl font-semibold">{formatCurrency(stats.todayRevenue)}</p>
+              <span className="text-xs text-emerald-500">↑ 12.5%</span>
+            </div>
+          </div>
+        </Card>
+
+        {/* Active Orders */}
+        <Card className="p-6 relative overflow-hidden">
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+            <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center">
+              <Timer className="w-6 h-6 text-amber-500" />
+            </div>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Active Orders</p>
+            <div className="flex items-baseline gap-2 mt-2">
+              <p className="text-2xl font-semibold">{stats.activeOrders}</p>
+              <span className="text-[10px] text-amber-500 font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10">Live</span>
+            </div>
+          </div>
+        </Card>
+
+        {/* Tables Status */}
+        <Card className="p-6 relative overflow-hidden">
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+            <div className="w-12 h-12 rounded-full bg-violet-500/10 flex items-center justify-center">
+              <LayoutGrid className="w-6 h-6 text-violet-500" />
+            </div>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Tables Status</p>
+            <div className="flex items-baseline gap-2 mt-2">
+              <p className="text-2xl font-semibold">{stats.availableTables}/{stats.totalTables}</p>
+              <span className="text-[10px] text-violet-500 font-medium px-1.5 py-0.5 rounded-full bg-violet-500/10">Available</span>
+            </div>
+          </div>
+        </Card>
+
+        {/* Completed Orders */}
+        <Card className="p-6 relative overflow-hidden">
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+            <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center">
+              <Clock className="w-6 h-6 text-blue-500" />
+            </div>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Completed Orders</p>
+            <div className="flex items-baseline gap-2 mt-2">
+              <p className="text-2xl font-semibold">{stats.completedOrders}</p>
+              <span className="text-[10px] text-blue-500 font-medium px-1.5 py-0.5 rounded-full bg-blue-500/10">Today</span>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-[2fr_1fr] gap-4">
+        {/* Recent Orders Card */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Recent Orders</h2>
+            <Button variant="ghost" size="sm" className="h-8 text-muted-foreground hover:text-foreground">
+              View All <ArrowUpRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            {stats.recentOrders.map((order) => (
+              <div
+                key={order.id}
+                className="flex items-center justify-between p-4 bg-white rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+                onClick={() => setSelectedOrderId(order.id)}
+              >
+                <div>
+                  <p className="font-medium">Table {order.table.table_number}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium">{formatCurrency(order.total_amount)}</p>
+                  <span className={`inline-block text-xs px-2 py-0.5 rounded-full ${
+                    order.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500' :
+                    order.status === 'cancelled' ? 'bg-red-500/10 text-red-500' :
+                    'bg-amber-500/10 text-amber-500'
+                  }`}>
+                    {order.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Right Column */}
+        <div className="space-y-4">
+          {/* Quick Actions Card */}
+          <Card className="p-6">
+            <h3 className="font-semibold mb-4">Quick Actions</h3>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" className="h-24 flex flex-col items-center justify-center bg-white hover:bg-muted/50">
+                <MenuIcon className="h-6 w-6 mb-2" />
+                Update Menu
+              </Button>
+              <Button variant="outline" className="h-24 flex flex-col items-center justify-center bg-white hover:bg-muted/50">
+                <Grid className="h-6 w-6 mb-2" />
+                Manage Tables
+              </Button>
+              <Button variant="outline" className="h-24 flex flex-col items-center justify-center bg-white hover:bg-muted/50">
+                <Clock className="h-6 w-6 mb-2" />
+                View Orders
+              </Button>
+              <Button variant="outline" className="h-24 flex flex-col items-center justify-center bg-white hover:bg-muted/50">
+                <Settings className="h-6 w-6 mb-2" />
+                Settings
+              </Button>
+            </div>
+          </Card>
+
+          {/* Today's Performance Card */}
+          <Card className="p-6">
+            <h3 className="font-semibold mb-4">Today's Performance</h3>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Average Order Value</span>
+                <span className="font-medium">{formatCurrency(stats.todayRevenue / (stats.todayOrderCount || 1))}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Table Turnover Rate</span>
+                <span className="font-medium">0.2x</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Peak Hours</span>
+                <span className="font-medium">12:00 - 14:00</span>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* Order Details Dialog */}
+      <Dialog open={!!selectedOrderId} onOpenChange={(open) => !open && setSelectedOrderId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Order Details</DialogTitle>
+          </DialogHeader>
+          {selectedOrder && (
+            <OrderDetails
+              order={selectedOrder}
+              onStatusChange={async (newStatus) => {
+                try {
+                  const { error } = await supabase
+                    .from('orders')
+                    .update({ status: newStatus })
+                    .eq('id', selectedOrder.id)
+
+                  if (error) throw error
+
+                  setSelectedOrderId(null)
+                  fetchDashboardStats()
+                } catch (error) {
+                  console.error('Error updating order status:', error)
+                }
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

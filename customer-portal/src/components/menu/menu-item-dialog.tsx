@@ -9,6 +9,7 @@ import { useCartStore } from '@/store/cart-store'
 import { useToast } from '@/components/ui/use-toast'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { formatCurrency } from '@/lib/utils'
 
 type MenuItem = Database['public']['Tables']['menu_items']['Row']
 
@@ -330,7 +331,7 @@ export function MenuItemDialog({ item, open, onOpenChange }: MenuItemDialogProps
             <div className="space-y-3">
               <div className="flex items-start justify-between">
                 <h2 className="text-xl font-semibold">{item.name}</h2>
-                <p className="text-xl font-semibold">${item.price.toFixed(2)}</p>
+                <p className="text-xl font-semibold">{formatCurrency(item.price)}</p>
               </div>
               <p className="text-muted-foreground text-sm leading-relaxed">{item.description}</p>
             </div>
@@ -406,7 +407,7 @@ export function MenuItemDialog({ item, open, onOpenChange }: MenuItemDialogProps
                             </div>
                             {option.price_adjustment > 0 && (
                               <span className="text-sm text-muted-foreground">
-                                +${option.price_adjustment.toFixed(2)}
+                                +{formatCurrency(option.price_adjustment)}
                               </span>
                             )}
                           </button>
@@ -429,7 +430,7 @@ export function MenuItemDialog({ item, open, onOpenChange }: MenuItemDialogProps
                       <div key={extra} className="flex items-center justify-between bg-secondary/10 p-3 rounded-lg">
                         <div>
                           <span className="font-medium">{extra}</span>
-                          <span className="text-sm text-muted-foreground ml-2">+${price.toFixed(2)}</span>
+                          <span className="text-sm text-muted-foreground ml-2">+{formatCurrency(price)}</span>
                         </div>
                         <div className="flex items-center gap-3">
                           <Button
@@ -485,7 +486,7 @@ export function MenuItemDialog({ item, open, onOpenChange }: MenuItemDialogProps
                         <div>
                           <span className="font-medium">{side}</span>
                           {price > 0 && (
-                            <span className="text-sm text-muted-foreground ml-2">+${price.toFixed(2)}</span>
+                            <span className="text-sm text-muted-foreground ml-2">+{formatCurrency(price)}</span>
                           )}
                         </div>
                         <div className={`w-4 h-4 rounded-full border-2 ${
@@ -521,7 +522,7 @@ export function MenuItemDialog({ item, open, onOpenChange }: MenuItemDialogProps
                           <span className="font-medium">{size}</span>
                           {price !== 0 && (
                             <span className="text-sm text-muted-foreground ml-2">
-                              {price > 0 ? `+$${price.toFixed(2)}` : `-$${Math.abs(price).toFixed(2)}`}
+                              {price > 0 ? `+${formatCurrency(price)}` : `-${formatCurrency(Math.abs(price))}`}
                             </span>
                           )}
                         </div>
@@ -552,7 +553,7 @@ export function MenuItemDialog({ item, open, onOpenChange }: MenuItemDialogProps
                         <div>
                           <span className="font-medium">{milk}</span>
                           {price > 0 && (
-                            <span className="text-sm text-muted-foreground ml-2">+${price.toFixed(2)}</span>
+                            <span className="text-sm text-muted-foreground ml-2">+{formatCurrency(price)}</span>
                           )}
                         </div>
                         <div className={`w-4 h-4 rounded-full border-2 ${
@@ -576,7 +577,7 @@ export function MenuItemDialog({ item, open, onOpenChange }: MenuItemDialogProps
             size="lg"
             onClick={handleAddToCart}
           >
-            Add to Cart • ${calculateTotalPrice().toFixed(2)}
+            Add to Cart • {formatCurrency(calculateTotalPrice())}
           </Button>
         </div>
       </DialogContent>
