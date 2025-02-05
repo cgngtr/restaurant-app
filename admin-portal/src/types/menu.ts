@@ -8,21 +8,18 @@ export type MenuItem = {
   category_id: string;
   is_available: boolean;
   image_url?: string | undefined;
-  category?: {
-    name: string;
+  dietary_flags?: {
+    type: 'burger' | 'coffee' | null;
+    extras: Record<string, number>;
+    sides: Record<string, number>;
+    sizes: Record<string, number>;
+    milk_options: Record<string, number>;
   };
   customization_options?: {
-    size?: {
-      options: string[];
-      required: boolean;
-    };
-    extras?: {
-      options: string[];
-      required: boolean;
-    };
-    spiciness?: {
-      options: string[];
-      required: boolean;
-    };
+    type: 'burger' | 'coffee' | null;
+    extras: Record<string, number>;
+    sides: Record<string, number>;
+    sizes: Record<string, number>;
+    milk_options: Record<string, number>;
   };
 }; 

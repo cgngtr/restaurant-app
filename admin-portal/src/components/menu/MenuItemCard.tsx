@@ -74,26 +74,65 @@ interface MenuItemCardProps {
 
 export function MenuItemCard({ item, categories, onEdit, onDelete }: MenuItemCardProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [editedItem, setEditedItem] = useState<MenuItem>(item)
-  const [customizationOptions, setCustomizationOptions] = useState<CustomizationOptions>({
-    type: null,
-    extras: {},
-    sides: {},
-    sizes: {},
-    milk_options: {}
+  const [editedItem, setEditedItem] = useState<MenuItem>({
+    id: item.id,
+    name: item.name,
+    description: item.description,
+    price: item.price,
+    category_id: item.category_id,
+    is_available: item.is_available,
+    image_url: item.image_url,
+    customization_options: item.customization_options
   })
+  const [customizationOptions, setCustomizationOptions] = useState<CustomizationOptions>(
+    item.customization_options || {
+      type: null,
+      extras: {},
+      sides: {},
+      sizes: {},
+      milk_options: {}
+    }
+  )
 
   const handleSave = async () => {
     try {
-      const { error } = await supabase
+      // Önce update işlemini yapalım
+      const { error: updateError } = await supabase
         .from('menu_items')
         .update({
-          ...editedItem,
-          dietary_flags: customizationOptions
+          name: editedItem.name,
+          description: editedItem.description,
+          price: editedItem.price,
+          category_id: editedItem.category_id,
+          is_available: editedItem.is_available,
+          image_url: editedItem.image_url,
+          customization_options: customizationOptions
         })
         .eq('id', item.id)
 
-      if (error) throw error
+      if (updateError) throw updateError
+
+      // Sonra güncellenmiş veriyi alalım
+      const { data: updatedData, error: fetchError } = await supabase
+        .from('menu_items')
+        .select('*')
+        .eq('id', item.id)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      if (!updatedData) {
+        throw new Error('Updated data not found')
+      }
+
+      // UI'ı güncelleyelim
+      const updatedItem: MenuItem = {
+        ...updatedData,
+        customization_options: customizationOptions
+      }
+
+      // Parent component'i güncelleyelim
+      await onEdit(updatedItem)
 
       toast({
         title: 'Success',
@@ -101,11 +140,11 @@ export function MenuItemCard({ item, categories, onEdit, onDelete }: MenuItemCar
       })
 
       setIsEditDialogOpen(false)
-      onEdit(editedItem)
     } catch (error: any) {
+      console.error('Update error:', error)
       toast({
         title: 'Error',
-        description: error.message,
+        description: error.message || 'Failed to update menu item',
         variant: 'destructive'
       })
     }
@@ -160,7 +199,9 @@ export function MenuItemCard({ item, categories, onEdit, onDelete }: MenuItemCar
         <div className="flex justify-between items-start mb-2">
           <div>
             <h3 className="font-semibold text-lg">{item.name}</h3>
-            <p className="text-sm text-gray-500">{item.category?.name}</p>
+            <p className="text-sm text-gray-500">
+              {categories.find(cat => cat.id === item.category_id)?.name}
+            </p>
           </div>
           <p className="font-medium">{formatCurrency(item.price)}</p>
         </div>

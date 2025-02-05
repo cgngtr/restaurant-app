@@ -8,7 +8,8 @@ import {
   Table as TableIcon, 
   Utensils,
   Settings,
-  Menu
+  Menu,
+  Sliders
 } from 'lucide-react'
 import { useRoutePrefetch } from '@/hooks/use-route-prefetch'
 import { useEffect, useState } from 'react'
@@ -17,6 +18,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Tables', href: '/tables', icon: TableIcon },
   { name: 'Menu', href: '/menu', icon: Menu },
+  { name: 'Customization', href: '/customization', icon: Sliders },
   { name: 'Orders', href: '/orders', icon: Utensils },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
