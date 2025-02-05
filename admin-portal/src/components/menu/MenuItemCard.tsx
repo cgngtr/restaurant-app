@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { toast } from '@/components/ui/use-toast'
-import { Edit, X, Trash } from 'lucide-react'
+import { Edit, X, Trash, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import {
   Dialog,
@@ -21,6 +21,7 @@ import { Database } from '@/types/supabase'
 import { formatCurrency } from '@/lib/utils'
 import Image from 'next/image'
 import { MenuItem } from '@/types/menu'
+import imageCompression from 'browser-image-compression'
 
 interface CustomizationOptions {
   type: 'burger' | 'coffee' | null;
@@ -72,6 +73,31 @@ interface MenuItemCardProps {
   onDelete: () => Promise<void>
 }
 
+// Add compression options
+const compressionOptions = {
+  maxSizeMB: 1,             // Maximum size in MB
+  maxWidthOrHeight: 1024,   // Max width/height
+  useWebWorker: true,       // Use web worker for better performance
+  initialQuality: 0.8,      // Initial quality (0 to 1)
+}
+
+// Add compression function
+const compressImage = async (file: File): Promise<File> => {
+  try {
+    const compressedFile = await imageCompression(file, compressionOptions);
+    console.log('Compression results:', {
+      originalSize: (file.size / 1024 / 1024).toFixed(2) + 'MB',
+      compressedSize: (compressedFile.size / 1024 / 1024).toFixed(2) + 'MB',
+    });
+    return compressedFile;
+  } catch (error) {
+    console.error('Compression error:', error);
+    throw new Error('Image compression failed');
+  }
+};
+
+const DEFAULT_PLACEHOLDER_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNFRUVFRUUiLz48cGF0aCBkPSJNODAgOTBINzBWMTEwSDgwVjkwWiIgZmlsbD0iIzY2NiIvPjxwYXRoIGQ9Ik0xMzAgOTBIMTIwVjExMEgxMzBWOTBaIiBmaWxsPSIjNjY2Ii8+PHBhdGggZD0iTTEwMCAxMzBDMTEzLjgwNyAxMzAgMTI1IDExOC44MDcgMTI1IDEwNUMxMjUgOTEuMTkzIDExMy44MDcgODAgMTAwIDgwQzg2LjE5MyA4MCA3NSA5MS4xOTMgNzUgMTA1Qzc1IDExOC44MDcgODYuMTkzIDEzMCAxMDAgMTMwWiIgZmlsbD0iIzY2NiIvPjwvc3ZnPg=='
+
 export function MenuItemCard({ item, categories, onEdit, onDelete }: MenuItemCardProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editedItem, setEditedItem] = useState<MenuItem>({
@@ -93,6 +119,104 @@ export function MenuItemCard({ item, categories, onEdit, onDelete }: MenuItemCar
       milk_options: {}
     }
   )
+  const [isUploading, setIsUploading] = useState(false)
+
+  const deleteImageFromStorage = async (imageUrl: string | undefined | null) => {
+    if (!imageUrl) return;
+    try {
+      const oldFilePath = imageUrl.split('/').pop();
+      if (oldFilePath) {
+        await supabase.storage
+          .from('menu-images')
+          .remove([`menu-items/${oldFilePath}`]);
+      }
+    } catch (error) {
+      console.error('Error deleting image from storage:', error);
+    }
+  };
+
+  const handleImageRemove = async () => {
+    try {
+      // Delete from storage
+      await deleteImageFromStorage(editedItem.image_url);
+      
+      // Update local state
+      setEditedItem({ ...editedItem, image_url: undefined });
+      
+      toast({
+        title: 'Success',
+        description: 'Image removed successfully',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: 'Failed to remove image',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploading(true)
+    try {
+      // Validate file type
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        throw new Error('File must be JPEG, PNG, or WebP')
+      }
+
+      // Compress image before size validation
+      const compressedFile = await compressImage(file);
+
+      // Validate compressed file size (max 2MB after compression)
+      if (compressedFile.size > 2 * 1024 * 1024) {
+        throw new Error('File size must be less than 2MB after compression')
+      }
+
+      // Delete old image if exists
+      await deleteImageFromStorage(editedItem.image_url);
+
+      // Generate a unique file name
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${item.id}-${Date.now()}.${fileExt}`
+      const filePath = `menu-items/${fileName}`
+
+      // Upload compressed file to Supabase Storage
+      const { error: uploadError, data } = await supabase.storage
+        .from('menu-images')
+        .upload(filePath, compressedFile, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: compressedFile.type
+        })
+
+      if (uploadError) throw uploadError
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('menu-images')
+        .getPublicUrl(filePath)
+
+      // Update editedItem with new image URL
+      setEditedItem({ ...editedItem, image_url: publicUrl })
+
+      toast({
+        title: 'Success',
+        description: `Image uploaded successfully (Size: ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB)`,
+      })
+    } catch (error: any) {
+      console.error('Upload error:', error)
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to upload image',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsUploading(false)
+    }
+  }
 
   const handleSave = async () => {
     try {
@@ -105,7 +229,7 @@ export function MenuItemCard({ item, categories, onEdit, onDelete }: MenuItemCar
           price: editedItem.price,
           category_id: editedItem.category_id,
           is_available: editedItem.is_available,
-          image_url: editedItem.image_url,
+          image_url: editedItem.image_url || undefined,
           customization_options: customizationOptions
         })
         .eq('id', item.id)
@@ -187,10 +311,17 @@ export function MenuItemCard({ item, categories, onEdit, onDelete }: MenuItemCar
             alt={item.name}
             fill
             className="object-cover"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            priority={false}
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = DEFAULT_PLACEHOLDER_IMAGE;
+            }}
           />
         ) : (
-          <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-            <span className="text-gray-400">No image</span>
+          <div className="w-full h-full bg-secondary/10 flex flex-col items-center justify-center">
+            <div className="text-4xl text-muted-foreground mb-2">🍽️</div>
+            <span className="text-sm text-muted-foreground">No image</span>
           </div>
         )}
       </div>
@@ -280,6 +411,55 @@ export function MenuItemCard({ item, categories, onEdit, onDelete }: MenuItemCar
                       </option>
                     ))}
                   </select>
+                </div>
+                <div>
+                  <Label>Image</Label>
+                  <div className="mt-2 flex items-center gap-4">
+                    {editedItem.image_url && (
+                      <div className="relative h-20 w-20 rounded-md overflow-hidden">
+                        <Image
+                          src={editedItem.image_url || DEFAULT_PLACEHOLDER_IMAGE}
+                          alt={editedItem.name}
+                          fill
+                          className="object-cover"
+                          sizes="80px"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = DEFAULT_PLACEHOLDER_IMAGE;
+                          }}
+                        />
+                      </div>
+                    )}
+                    <label className={`cursor-pointer ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                      <div className="px-4 py-2 bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-md transition-colors flex items-center gap-2">
+                        {isUploading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          'Choose Image'
+                        )}
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                        disabled={isUploading}
+                      />
+                    </label>
+                    {editedItem.image_url && !isUploading && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleImageRemove}
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Switch

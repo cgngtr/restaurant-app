@@ -11,6 +11,8 @@ import { motion } from 'framer-motion'
 import { 
   ChevronLeft,
   Coffee,
+  GlassWater,
+  Sandwich,
   Soup,
   Pizza,
   Beef,
@@ -35,14 +37,10 @@ interface MenuProps {
 }
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
-  'Starters': Soup,
-  'Main Course': Beef,
-  'Main Courses': Beef,
+  'Hot Beverages': Coffee,
+  'Cold Beverages': GlassWater,
   'Desserts': IceCream,
-  'Drinks': Coffee,
-  'Wines': Wine,
-  'Salads': Salad,
-  'Pizza': Pizza,
+  'Sandwiches': Sandwich,
   'Snacks': Cookie,
 }
 
@@ -165,13 +163,14 @@ export function Menu({ restaurantName, tableNumber, categories, items }: MenuPro
                 <motion.div
                   key={category.id}
                   variants={item}
-                  className="p-6 border rounded-lg hover:bg-accent cursor-pointer text-center"
+                  className="relative p-6 border rounded-xl hover:bg-accent/50 cursor-pointer text-center transition-all duration-200 group"
                   onClick={() => setSelectedCategory(category.id)}
                 >
-                  <Icon className="h-8 w-8 mx-auto mb-3" />
-                  <h3 className="font-medium">{category.name}</h3>
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                  <Icon className="h-8 w-8 mx-auto mb-3 text-primary group-hover:scale-110 transition-transform duration-200" />
+                  <h3 className="font-medium text-lg">{category.name}</h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {itemCount} {itemCount === 1 ? 'item' : 'items'}
+                    {itemCount} {itemCount === 1 ? 'product' : 'products'}
                   </p>
                 </motion.div>
               )
@@ -194,17 +193,22 @@ export function Menu({ restaurantName, tableNumber, categories, items }: MenuPro
                 onClick={() => setSelectedItem(menuItem)}
               >
                 <div className="relative w-full h-full">
-                  <img
-                    src={menuItem.image_url || getRandomFallbackImage()}
-                    alt={menuItem.name}
-                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                    onError={(e) => {
-                      const imgElement = e.target as HTMLImageElement;
-                      if (!imgElement.src.includes('fallback')) {
+                  {menuItem.image_url ? (
+                    <img
+                      src={menuItem.image_url}
+                      alt={menuItem.name}
+                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                      onError={(e) => {
+                        const imgElement = e.target as HTMLImageElement;
                         imgElement.src = getRandomFallbackImage();
-                      }
-                    }}
-                  />
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-secondary/10 flex flex-col items-center justify-center">
+                      <div className="text-4xl text-muted-foreground mb-2">🍽️</div>
+                      <span className="text-sm text-muted-foreground">No image</span>
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
                     <div className="absolute bottom-0 left-0 right-0 p-3">
                       <h3 className="text-sm font-medium text-white line-clamp-2">{menuItem.name}</h3>

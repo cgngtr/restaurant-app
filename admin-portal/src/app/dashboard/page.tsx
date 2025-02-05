@@ -17,6 +17,10 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { OrderDetails } from "@/components/orders/order-details"
+import { useQuery } from '@tanstack/react-query'
+import { OrderWithDetails } from '@/types/order'
 
 interface OrderData {
   id: string
@@ -62,6 +66,63 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats>(initialStats)
   const [isLoading, setIsLoading] = useState(true)
   const [restaurantData, setRestaurantData] = useState<{ id: string } | null>(null)
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
+
+  // Fetch selected order details
+  const { data: selectedOrder } = useQuery<OrderWithDetails | undefined>({
+    queryKey: ['order', selectedOrderId],
+    queryFn: async () => {
+      if (!selectedOrderId) return undefined;
+      
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          restaurant_id,
+          table_id,
+          status,
+          total_amount,
+          notes,
+          created_at,
+          updated_at,
+          table:tables!inner (
+            table_number
+          ),
+          order_items:order_items!inner (
+            id,
+            order_id,
+            menu_item_id,
+            quantity,
+            unit_price,
+            menu_item:menu_items!inner (
+              name,
+              description,
+              price
+            )
+          )
+        `)
+        .eq('id', selectedOrderId)
+        .single()
+
+      if (error) {
+        console.error('Error fetching order:', error)
+        return undefined;
+      }
+
+      // Transform the data to match OrderWithDetails type
+      return {
+        ...data,
+        table: data.table || null,
+        order_items: data.order_items.map(item => ({
+          ...item,
+          menu_item: item.menu_item,
+          customizations: {} // Provide empty customizations object as default
+        }))
+      } as OrderWithDetails;
+    },
+    enabled: !!selectedOrderId,
+    retry: false // Prevent retrying on error
+  })
 
   // Fetch restaurant data first
   useEffect(() => {
@@ -276,10 +337,22 @@ export default function DashboardPage() {
 
       {/* Recent Orders */}
       <Card className="p-4">
-        <h2 className="text-lg font-semibold mb-4">Recent Orders</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Recent Orders</h2>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/orders">
+              View All Orders
+              <ArrowUp className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
         <div className="space-y-4">
           {stats.recentOrders.map((order) => (
-            <div key={order.id} className="flex items-center justify-between p-2 hover:bg-accent rounded-lg">
+            <div 
+              key={order.id}
+              onClick={() => setSelectedOrderId(order.id)}
+              className="flex items-center justify-between p-2 hover:bg-accent rounded-lg transition-colors cursor-pointer"
+            >
               <div>
                 <p className="font-medium">Table {order.table.table_number}</p>
                 <p className="text-sm text-muted-foreground">
@@ -304,6 +377,45 @@ export default function DashboardPage() {
           )}
         </div>
       </Card>
+
+      <Dialog open={!!selectedOrderId} onOpenChange={(open) => !open && setSelectedOrderId(null)}>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle>Order Details</DialogTitle>
+            <DialogDescription>
+              View and manage order details for Table {selectedOrder?.table?.table_number}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-auto">
+            {selectedOrder ? (
+              <OrderDetails
+                order={selectedOrder}
+                onStatusChange={async (newStatus) => {
+                  try {
+                    const { error } = await supabase
+                      .from('orders')
+                      .update({ status: newStatus })
+                      .eq('id', selectedOrderId);
+                    
+                    if (error) throw error;
+                    
+                    // Refresh dashboard stats after status change
+                    await fetchDashboardStats();
+                    setSelectedOrderId(null);
+                  } catch (error) {
+                    console.error('Error updating order status:', error);
+                  }
+                }}
+              />
+            ) : (
+              <div className="py-8 text-center text-muted-foreground">
+                Loading order details...
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 } 

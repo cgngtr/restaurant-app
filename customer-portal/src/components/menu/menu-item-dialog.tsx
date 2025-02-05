@@ -286,17 +286,22 @@ export function MenuItemDialog({ item, open, onOpenChange }: MenuItemDialogProps
           <div className="relative">
             {/* Image */}
             <div className="relative aspect-[16/9] w-full">
-              <img
-                src={item.image_url || getRandomFallbackImage()}
-                alt={item.name}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  const imgElement = e.target as HTMLImageElement;
-                  if (!imgElement.src.includes('fallback')) {
+              {item.image_url ? (
+                <img
+                  src={item.image_url}
+                  alt={item.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const imgElement = e.target as HTMLImageElement;
                     imgElement.src = getRandomFallbackImage();
-                  }
-                }}
-              />
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full bg-secondary/10 flex flex-col items-center justify-center">
+                  <div className="text-6xl text-muted-foreground mb-3">🍽️</div>
+                  <span className="text-base text-muted-foreground">No image available</span>
+                </div>
+              )}
             </div>
 
             {/* Header Overlay */}
