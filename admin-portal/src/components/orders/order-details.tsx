@@ -13,11 +13,11 @@ interface OrderDetailsProps {
 }
 
 const statusTransitions = {
-  pending: ['preparing', 'cancelled'],
-  preparing: ['ready', 'cancelled'],
-  ready: ['delivered', 'cancelled'],
-  delivered: [],
-  cancelled: [],
+  'pending': ['preparing', 'cancelled'],
+  'preparing': ['ready', 'cancelled'],
+  'ready': ['completed', 'cancelled'],
+  'completed': [],
+  'cancelled': []
 } as const;
 
 export function OrderDetails({ order, onStatusChange }: OrderDetailsProps) {
@@ -61,7 +61,7 @@ export function OrderDetails({ order, onStatusChange }: OrderDetailsProps) {
             <div key={item.id} className="flex justify-between items-start">
               <div>
                 <p className="font-medium">
-                  {item.quantity}x {item.menu_item.name}
+                  {item.quantity}x {item.menu_item?.name || 'Unknown Item'}
                 </p>
                 {item.customizations && Object.keys(item.customizations).length > 0 && (
                   <p className="text-sm text-muted-foreground">

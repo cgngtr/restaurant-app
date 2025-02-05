@@ -4,7 +4,7 @@ import { useEffect, useState, use } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Clock, CheckCircle2, ChefHat, Bike } from 'lucide-react'
+import { ArrowLeft, Clock, CheckCircle2, ChefHat, Soup } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 
 type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed'
@@ -47,7 +47,7 @@ const statusConfig = {
     color: 'text-blue-500'
   },
   ready: {
-    icon: Bike,
+    icon: Soup,
     label: 'Ready to Serve',
     description: 'Your order is ready and will be served shortly.',
     color: 'text-purple-500'

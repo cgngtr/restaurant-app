@@ -22,6 +22,13 @@ import { formatCurrency } from '@/lib/utils'
 import Image from 'next/image'
 import { MenuItem } from '@/types/menu'
 import imageCompression from 'browser-image-compression'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface CustomizationOptions {
   type: 'burger' | 'coffee' | null;
@@ -400,17 +407,21 @@ export function MenuItemCard({ item, categories, onEdit, onDelete }: MenuItemCar
                 </div>
                 <div>
                   <Label>Category</Label>
-                  <select
-                    className="w-full p-2 border rounded-md"
+                  <Select
                     value={editedItem.category_id}
-                    onChange={(e) => setEditedItem({ ...editedItem, category_id: e.target.value })}
+                    onValueChange={(value) => setEditedItem({ ...editedItem, category_id: value })}
                   >
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label>Image</Label>
