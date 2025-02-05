@@ -7,6 +7,8 @@ import { Database } from '@/types/supabase'
 import { Minus, Plus, ChevronLeft } from 'lucide-react'
 import { useCartStore } from '@/store/cart-store'
 import { useToast } from '@/components/ui/use-toast'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase'
 
 type MenuItem = Database['public']['Tables']['menu_items']['Row']
 
@@ -17,6 +19,17 @@ interface MenuItemWithExtras extends MenuItem {
     side?: string;
     extras?: Record<string, number>;
   }
+}
+
+interface DietaryFlag {
+  id: string
+  name: string
+  description?: string
+  icon_url?: string
+}
+
+interface DietaryFlagJoin {
+  dietary_flags: DietaryFlag
 }
 
 // Ürün kategorileri
@@ -120,6 +133,33 @@ export function MenuItemDialog({ item, open, onOpenChange }: MenuItemDialogProps
   // Show conditions
   const isBurger = BURGER_ITEMS.includes(item.name)
   const isCoffee = COFFEE_ITEMS.includes(item.name)
+
+  // Dietary flags'leri çek
+  const { data: dietaryFlags } = useQuery<DietaryFlag[]>({
+    queryKey: ['dietary-flags', item.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('menu_item_dietary_flags')
+        .select(`
+          dietary_flags(
+            id,
+            name,
+            description,
+            icon_url
+          )
+        `)
+        .eq('menu_item_id', item.id);
+      
+      if (!data) return [];
+      
+      return (data as unknown as DietaryFlagJoin[]).map(item => ({
+        id: item.dietary_flags.id,
+        name: item.dietary_flags.name,
+        description: item.dietary_flags.description || undefined,
+        icon_url: item.dietary_flags.icon_url || undefined
+      }));
+    }
+  });
 
   // Initialize default selections
   useEffect(() => {
@@ -290,19 +330,30 @@ export function MenuItemDialog({ item, open, onOpenChange }: MenuItemDialogProps
               <p className="text-muted-foreground text-sm leading-relaxed">{item.description}</p>
             </div>
 
-            {/* Dietary flags */}
-            {item.dietary_flags && (
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(item.dietary_flags).map(([flag, value]) => (
-                  value && (
-                    <span 
-                      key={flag} 
-                      className="text-xs font-medium bg-secondary/30 text-secondary-foreground px-2.5 py-1 rounded-full"
+            {/* Dietary Flags */}
+            {dietaryFlags && dietaryFlags.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-muted-foreground">Dietary Information</h3>
+                <div className="flex flex-wrap gap-2">
+                  {dietaryFlags.map((flag) => (
+                    <div
+                      key={flag.id}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-secondary/10 rounded-full"
                     >
-                      {flag.charAt(0).toUpperCase() + flag.slice(1)}
-                    </span>
-                  )
-                ))}
+                      {flag.icon_url && (
+                        <img
+                          src={flag.icon_url}
+                          alt={flag.name}
+                          className="w-4 h-4"
+                        />
+                      )}
+                      <span className="text-sm font-medium">{flag.name}</span>
+                      {flag.description && (
+                        <span className="sr-only">{flag.description}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

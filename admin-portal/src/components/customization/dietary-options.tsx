@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,10 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useRestaurantId } from "@/hooks/use-restaurant-id";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface DietaryFlag {
   id: string;
@@ -27,12 +31,26 @@ interface DietaryFlag {
   icon_url: string;
 }
 
+interface MenuItem {
+  id: string;
+  name: string;
+  category_id: string;
+}
+
+interface MenuCategory {
+  id: string;
+  name: string;
+}
+
 export function DietaryOptions() {
   const { toast } = useToast();
   const restaurantId = useRestaurantId();
   const queryClient = useQueryClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingFlag, setEditingFlag] = useState<DietaryFlag | null>(null);
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   // Dietary flags'leri çek
   const { data: flags, isLoading } = useQuery({
@@ -68,59 +86,9 @@ export function DietaryOptions() {
           icon_url: 'https://api.iconify.design/game-icons:peanut.svg?color=%23854d0e'
         },
         {
-          name: 'Soy Free',
-          description: 'Contains no soy',
-          icon_url: 'https://api.iconify.design/mdi:soy-sauce-off.svg?color=%23854d0e'
-        },
-        {
-          name: 'Shellfish Free',
-          description: 'No shellfish',
-          icon_url: 'https://api.iconify.design/game-icons:shrimp.svg?color=%23854d0e'
-        },
-        {
-          name: 'Egg Free',
-          description: 'Contains no eggs',
-          icon_url: 'https://api.iconify.design/mdi:egg-off.svg?color=%23854d0e'
-        },
-        {
-          name: 'Mustard Free',
-          description: 'Contains no mustard',
-          icon_url: 'https://api.iconify.design/fluent:drink-bottle-off-20-filled.svg?color=%23854d0e'
-        },
-        {
-          name: 'Sesame Free',
-          description: 'Contains no sesame',
-          icon_url: 'https://api.iconify.design/game-icons:sesame.svg?color=%23854d0e'
-        },
-        {
-          name: 'Halal',
-          description: 'Halal certified',
-          icon_url: 'https://api.iconify.design/material-symbols:check-circle.svg?color=%2322c55e'
-        },
-        {
-          name: 'Kosher',
-          description: 'Kosher certified',
-          icon_url: 'https://api.iconify.design/material-symbols:star.svg?color=%2322c55e'
-        },
-        {
           name: 'Dairy Free',
           description: 'Contains no dairy products',
           icon_url: 'https://api.iconify.design/mdi:cow-off.svg?color=%23854d0e'
-        },
-        {
-          name: 'Sugar Free',
-          description: 'Contains no sugar',
-          icon_url: 'https://api.iconify.design/material-symbols:cookie-off.svg?color=%23854d0e'
-        },
-        {
-          name: 'Alcohol Free',
-          description: 'Contains no alcohol',
-          icon_url: 'https://api.iconify.design/material-symbols:no-drinks.svg?color=%23854d0e'
-        },
-        {
-          name: 'Spicy',
-          description: 'Hot and spicy',
-          icon_url: 'https://api.iconify.design/mdi:chili-hot.svg?color=%23b91c1c'
         }
       ];
       
@@ -151,55 +119,87 @@ export function DietaryOptions() {
         }
 
         return insertedData;
-      } else {
-        // Mevcut bayrakları güncelle
-        for (const defaultFlag of defaultFlags) {
-          const existingFlag = data.find(f => f.name === defaultFlag.name);
-          if (existingFlag) {
-            // Bayrak varsa güncelle
-            const { error: updateError } = await supabase
-              .from('dietary_flags')
-              .update({
-                description: defaultFlag.description,
-                icon_url: defaultFlag.icon_url
-              })
-              .eq('id', existingFlag.id);
-
-            if (updateError) {
-              console.error('Error updating dietary flag:', updateError);
-            }
-          } else {
-            // Bayrak yoksa ekle
-            const { error: insertError } = await supabase
-              .from('dietary_flags')
-              .insert([{
-                ...defaultFlag,
-                restaurant_id: restaurantId
-              }]);
-
-            if (insertError) {
-              console.error('Error inserting dietary flag:', insertError);
-            }
-          }
-        }
-
-        // Güncellenmiş verileri getir
-        const { data: updatedData, error: fetchError } = await supabase
-          .from('dietary_flags')
-          .select('*')
-          .eq('restaurant_id', restaurantId)
-          .order('name');
-
-        if (fetchError) {
-          console.error('Error fetching updated dietary flags:', fetchError);
-          throw fetchError;
-        }
-
-        return updatedData;
       }
+
+      return data;
     },
     enabled: !!restaurantId
   });
+
+  // Fetch menu categories and items
+  const { data: categories } = useQuery({
+    queryKey: ['menu-categories', restaurantId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('menu_categories')
+        .select('*')
+        .eq('restaurant_id', restaurantId)
+        .order('name');
+      return data || [];
+    }
+  });
+
+  const { data: menuItems } = useQuery({
+    queryKey: ['menu-items', restaurantId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('menu_items')
+        .select('*')
+        .eq('restaurant_id', restaurantId)
+        .order('name');
+      return data || [];
+    }
+  });
+
+  // Fetch applied products when editing
+  useEffect(() => {
+    if (editingFlag) {
+      const fetchAppliedProducts = async () => {
+        const { data } = await supabase
+          .from('menu_item_dietary_flags')
+          .select('menu_item_id')
+          .eq('flag_id', editingFlag.id);
+        
+        if (data) {
+          setSelectedProducts(data.map(item => item.menu_item_id));
+        }
+      };
+      fetchAppliedProducts();
+    }
+  }, [editingFlag]);
+
+  // Filter menu items based on search and category
+  const filteredItems = useMemo(() => {
+    let items = menuItems || [];
+    
+    if (selectedCategory && selectedCategory !== '_all') {
+      items = items.filter(item => item.category_id === selectedCategory);
+    }
+    
+    if (searchTerm) {
+      items = items.filter(item => 
+        item.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    return items;
+  }, [menuItems, selectedCategory, searchTerm]);
+
+  // Get selected product names for display
+  const selectedProductNames = useMemo(() => {
+    return selectedProducts.map(id => 
+      menuItems?.find(item => item.id === id)?.name || ''
+    ).filter(Boolean);
+  }, [selectedProducts, menuItems]);
+
+  // Handle product selection
+  const toggleProduct = (productId: string) => {
+    setSelectedProducts(prev => 
+      prev.includes(productId)
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    );
+  };
 
   // Flag ekleme mutation'ı
   const createMutation = useMutation({
@@ -233,8 +233,15 @@ export function DietaryOptions() {
 
   // Flag güncelleme mutation'ı
   const updateMutation = useMutation({
-    mutationFn: async (data: { id: string; name: string; description?: string; icon_url?: string }) => {
-      const { error } = await supabase
+    mutationFn: async (data: { 
+      id: string; 
+      name: string; 
+      description?: string; 
+      icon_url?: string;
+      products: string[];
+    }) => {
+      // Update flag
+      const { error: flagError } = await supabase
         .from('dietary_flags')
         .update({
           name: data.name,
@@ -242,7 +249,30 @@ export function DietaryOptions() {
           icon_url: data.icon_url
         })
         .eq('id', data.id);
-      if (error) throw error;
+
+      if (flagError) throw flagError;
+
+      // Delete existing associations
+      const { error: deleteError } = await supabase
+        .from('menu_item_dietary_flags')
+        .delete()
+        .eq('flag_id', data.id);
+
+      if (deleteError) throw deleteError;
+
+      // Insert new associations
+      if (data.products.length > 0) {
+        const { error: insertError } = await supabase
+          .from('menu_item_dietary_flags')
+          .insert(
+            data.products.map(productId => ({
+              menu_item_id: productId,
+              flag_id: data.id
+            }))
+          );
+
+        if (insertError) throw insertError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dietary-flags'] });
@@ -251,6 +281,9 @@ export function DietaryOptions() {
         description: "The dietary flag has been updated successfully.",
       });
       setEditingFlag(null);
+      setSelectedProducts([]);
+      setSelectedCategory(null);
+      setSearchTerm("");
     }
   });
 
@@ -377,7 +410,7 @@ export function DietaryOptions() {
 
       {/* Edit Dialog */}
       <Dialog open={!!editingFlag} onOpenChange={(open) => !open && setEditingFlag(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Dietary Option</DialogTitle>
           </DialogHeader>
@@ -390,7 +423,8 @@ export function DietaryOptions() {
                   id: editingFlag.id,
                   name: formData.get("name") as string,
                   description: formData.get("description") as string,
-                  icon_url: formData.get("iconUrl") as string
+                  icon_url: formData.get("iconUrl") as string,
+                  products: selectedProducts
                 });
               }
             }} 
@@ -422,6 +456,71 @@ export function DietaryOptions() {
                 defaultValue={editingFlag?.icon_url}
               />
             </div>
+
+            <div className="space-y-4">
+              <Label>Applied for Products</Label>
+              
+              {/* Selected Products Display */}
+              <div className="flex flex-wrap gap-2 mb-2">
+                {selectedProductNames.map(name => (
+                  <Badge key={name} variant="secondary">
+                    {name}
+                  </Badge>
+                ))}
+              </div>
+
+              {/* Category and Search */}
+              <div className="flex gap-4 mb-2">
+                <Select
+                  value={selectedCategory || undefined}
+                  onValueChange={setSelectedCategory}
+                >
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_all">All Categories</SelectItem>
+                    {categories?.map(category => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Input
+                  placeholder="Search products..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="flex-1"
+                />
+              </div>
+
+              {/* Products List */}
+              <ScrollArea className="h-[200px] border rounded-md p-4">
+                <div className="space-y-2">
+                  {filteredItems.map(item => (
+                    <div key={item.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={item.id}
+                        checked={selectedProducts.includes(item.id)}
+                        onCheckedChange={() => toggleProduct(item.id)}
+                      />
+                      <label
+                        htmlFor={item.id}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {item.name}
+                      </label>
+                    </div>
+                  ))}
+                  {filteredItems.length === 0 && (
+                    <p className="text-sm text-gray-500">No products found</p>
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+
             <Button type="submit" className="w-full">
               Update Dietary Option
             </Button>
