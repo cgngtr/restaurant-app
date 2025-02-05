@@ -64,7 +64,20 @@ async function getRestaurantData(slug: string, tableNumber: string): Promise<Res
   // Son olarak menu itemlarını al
   const { data: items, error: itemsError } = await supabase
     .from('menu_items')
-    .select('*')
+    .select(`
+      *,
+      customization_groups:menu_item_customizations(
+        customization_groups(
+          id,
+          name,
+          description,
+          is_required,
+          min_selections,
+          max_selections,
+          options:customization_options(*)
+        )
+      )
+    `)
     .eq('restaurant_id', restaurant.id)
 
   if (itemsError) {
@@ -124,16 +137,13 @@ export default function RestaurantTablePage({ params }: PageProps) {
           .from('orders')
           .select('id, status')
           .eq('table_id', tableData.id)
-          .in('status', ['pending', 'preparing', 'ready'])
+          .eq('status', 'pending')
           .order('created_at', { ascending: false })
           .limit(1)
-          .single()
+          .maybeSingle()
 
-        if (orderData) {
-          setActiveOrder(orderData)
-        } else {
-          setActiveOrder(null)
-        }
+        console.log('Order Data:', orderData)
+        setActiveOrder(orderData)
       }
     }
 

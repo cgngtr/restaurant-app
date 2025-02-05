@@ -96,6 +96,22 @@ export interface Database {
           is_available: boolean
           dietary_flags: string[]
           created_at: string
+          customization_groups?: {
+            customization_groups: {
+              id: string
+              name: string
+              description?: string
+              is_required: boolean
+              min_selections: number
+              max_selections: number
+              options: {
+                id: string
+                name: string
+                price_adjustment: number
+                is_default: boolean
+              }[]
+            }
+          }[]
         }
         Insert: {
           id?: string

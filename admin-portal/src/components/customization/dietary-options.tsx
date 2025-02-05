@@ -48,29 +48,79 @@ export function DietaryOptions() {
       // Varsayılan bayrakları tanımla
       const defaultFlags = [
         { 
-          name: 'Vejetaryen',
-          description: 'Et içermeyen seçenekler',
+          name: 'Vegetarian',
+          description: 'Options without meat',
           icon_url: 'https://api.iconify.design/material-symbols:eco.svg?color=%2322c55e'
         },
         { 
           name: 'Vegan',
-          description: 'Hiçbir hayvansal ürün içermez',
+          description: 'Contains no animal products',
           icon_url: 'https://api.iconify.design/mdi:sprout.svg?color=%2322c55e'
         },
         { 
-          name: 'Glütensiz',
-          description: 'Glüten içermeyen seçenekler',
+          name: 'Gluten Free',
+          description: 'Options without gluten',
           icon_url: 'https://api.iconify.design/fluent:food-grains-24-regular.svg?color=%23b91c1c'
         },
-        { 
-          name: 'Acılı',
-          description: 'Baharatlı ve acılı',
-          icon_url: 'https://api.iconify.design/mdi:chili-hot.svg?color=%23b91c1c'
+        {
+          name: 'Nut Free',
+          description: 'No nuts or tree nuts',
+          icon_url: 'https://api.iconify.design/game-icons:peanut.svg?color=%23854d0e'
         },
-        { 
-          name: 'Laktozsuz',
-          description: 'Süt ürünü içermez',
-          icon_url: '/no_lactose_icon.svg'
+        {
+          name: 'Soy Free',
+          description: 'Contains no soy',
+          icon_url: 'https://api.iconify.design/mdi:soy-sauce-off.svg?color=%23854d0e'
+        },
+        {
+          name: 'Shellfish Free',
+          description: 'No shellfish',
+          icon_url: 'https://api.iconify.design/game-icons:shrimp.svg?color=%23854d0e'
+        },
+        {
+          name: 'Egg Free',
+          description: 'Contains no eggs',
+          icon_url: 'https://api.iconify.design/mdi:egg-off.svg?color=%23854d0e'
+        },
+        {
+          name: 'Mustard Free',
+          description: 'Contains no mustard',
+          icon_url: 'https://api.iconify.design/fluent:drink-bottle-off-20-filled.svg?color=%23854d0e'
+        },
+        {
+          name: 'Sesame Free',
+          description: 'Contains no sesame',
+          icon_url: 'https://api.iconify.design/game-icons:sesame.svg?color=%23854d0e'
+        },
+        {
+          name: 'Halal',
+          description: 'Halal certified',
+          icon_url: 'https://api.iconify.design/material-symbols:check-circle.svg?color=%2322c55e'
+        },
+        {
+          name: 'Kosher',
+          description: 'Kosher certified',
+          icon_url: 'https://api.iconify.design/material-symbols:star.svg?color=%2322c55e'
+        },
+        {
+          name: 'Dairy Free',
+          description: 'Contains no dairy products',
+          icon_url: 'https://api.iconify.design/mdi:cow-off.svg?color=%23854d0e'
+        },
+        {
+          name: 'Sugar Free',
+          description: 'Contains no sugar',
+          icon_url: 'https://api.iconify.design/material-symbols:cookie-off.svg?color=%23854d0e'
+        },
+        {
+          name: 'Alcohol Free',
+          description: 'Contains no alcohol',
+          icon_url: 'https://api.iconify.design/material-symbols:no-drinks.svg?color=%23854d0e'
+        },
+        {
+          name: 'Spicy',
+          description: 'Hot and spicy',
+          icon_url: 'https://api.iconify.design/mdi:chili-hot.svg?color=%23b91c1c'
         }
       ];
       
@@ -241,7 +291,14 @@ export function DietaryOptions() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Dietary Options</h2>
+        <div>
+          <h2 className="text-xl font-semibold">Dietary Options</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            <span className="text-[#22c55e] mr-2">●</span>Certified options
+            <span className="text-[#854d0e] mx-2">●</span>Allergen free options
+            <span className="text-[#b91c1c] ml-2">●</span>Special diet options
+          </p>
+        </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button>

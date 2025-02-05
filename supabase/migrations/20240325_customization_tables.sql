@@ -1,3 +1,9 @@
+-- Önce mevcut tabloları temizle
+DROP TABLE IF EXISTS menu_item_customizations;
+DROP TABLE IF EXISTS customization_options;
+DROP TABLE IF EXISTS customization_groups;
+DROP TABLE IF EXISTS customization_group_types;
+
 -- Özelleştirme grup tipleri (örn: "size", "milk_options", "cooking_degree" vs)
 CREATE TABLE customization_group_types (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -46,67 +52,44 @@ ALTER TABLE customization_groups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE customization_options ENABLE ROW LEVEL SECURITY;
 ALTER TABLE menu_item_customizations ENABLE ROW LEVEL SECURITY;
 
--- Public Policies (Geçici olarak)
-CREATE POLICY "Public can view customization_group_types"
-    ON customization_group_types FOR SELECT
-    USING (true);
+-- Önce mevcut policy'leri temizle
+DROP POLICY IF EXISTS "Public can view customization_group_types" ON customization_group_types;
+DROP POLICY IF EXISTS "Public can insert customization_group_types" ON customization_group_types;
+DROP POLICY IF EXISTS "Public can update customization_group_types" ON customization_group_types;
+DROP POLICY IF EXISTS "Public can delete customization_group_types" ON customization_group_types;
 
-CREATE POLICY "Public can insert customization_group_types"
-    ON customization_group_types FOR INSERT
+DROP POLICY IF EXISTS "Public can view customization_groups" ON customization_groups;
+DROP POLICY IF EXISTS "Public can insert customization_groups" ON customization_groups;
+DROP POLICY IF EXISTS "Public can update customization_groups" ON customization_groups;
+DROP POLICY IF EXISTS "Public can delete customization_groups" ON customization_groups;
+
+DROP POLICY IF EXISTS "Public can view customization_options" ON customization_options;
+DROP POLICY IF EXISTS "Public can insert customization_options" ON customization_options;
+DROP POLICY IF EXISTS "Public can update customization_options" ON customization_options;
+DROP POLICY IF EXISTS "Public can delete customization_options" ON customization_options;
+
+DROP POLICY IF EXISTS "Public can view menu_item_customizations" ON menu_item_customizations;
+DROP POLICY IF EXISTS "Public can insert menu_item_customizations" ON menu_item_customizations;
+DROP POLICY IF EXISTS "Public can update menu_item_customizations" ON menu_item_customizations;
+DROP POLICY IF EXISTS "Public can delete menu_item_customizations" ON menu_item_customizations;
+
+-- Yeni policy'leri ekle
+CREATE POLICY "Public can do anything with customization_group_types"
+    ON customization_group_types FOR ALL
+    USING (true)
     WITH CHECK (true);
 
-CREATE POLICY "Public can update customization_group_types"
-    ON customization_group_types FOR UPDATE
-    USING (true);
-
-CREATE POLICY "Public can delete customization_group_types"
-    ON customization_group_types FOR DELETE
-    USING (true);
-
-CREATE POLICY "Public can view customization_groups"
-    ON customization_groups FOR SELECT
-    USING (true);
-
-CREATE POLICY "Public can insert customization_groups"
-    ON customization_groups FOR INSERT
+CREATE POLICY "Public can do anything with customization_groups"
+    ON customization_groups FOR ALL
+    USING (true)
     WITH CHECK (true);
 
-CREATE POLICY "Public can update customization_groups"
-    ON customization_groups FOR UPDATE
-    USING (true);
-
-CREATE POLICY "Public can delete customization_groups"
-    ON customization_groups FOR DELETE
-    USING (true);
-
-CREATE POLICY "Public can view customization_options"
-    ON customization_options FOR SELECT
-    USING (true);
-
-CREATE POLICY "Public can insert customization_options"
-    ON customization_options FOR INSERT
+CREATE POLICY "Public can do anything with customization_options"
+    ON customization_options FOR ALL
+    USING (true)
     WITH CHECK (true);
 
-CREATE POLICY "Public can update customization_options"
-    ON customization_options FOR UPDATE
-    USING (true);
-
-CREATE POLICY "Public can delete customization_options"
-    ON customization_options FOR DELETE
-    USING (true);
-
-CREATE POLICY "Public can view menu_item_customizations"
-    ON menu_item_customizations FOR SELECT
-    USING (true);
-
-CREATE POLICY "Public can insert menu_item_customizations"
-    ON menu_item_customizations FOR INSERT
-    WITH CHECK (true);
-
-CREATE POLICY "Public can update menu_item_customizations"
-    ON menu_item_customizations FOR UPDATE
-    USING (true);
-
-CREATE POLICY "Public can delete menu_item_customizations"
-    ON menu_item_customizations FOR DELETE
-    USING (true); 
+CREATE POLICY "Public can do anything with menu_item_customizations"
+    ON menu_item_customizations FOR ALL
+    USING (true)
+    WITH CHECK (true); 

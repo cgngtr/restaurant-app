@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,28 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useRestaurantId } from "@/hooks/use-restaurant-id";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface CustomizationOption {
   id: string;
@@ -44,6 +66,17 @@ interface CustomizationGroup {
   options: CustomizationOption[];
 }
 
+interface MenuItem {
+  id: string;
+  name: string;
+  category_id: string;
+}
+
+interface MenuCategory {
+  id: string;
+  name: string;
+}
+
 export function CustomizationGroups() {
   const { toast } = useToast();
   const restaurantId = useRestaurantId();
@@ -52,6 +85,9 @@ export function CustomizationGroups() {
   const [isAddOptionDialogOpen, setIsAddOptionDialogOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<CustomizationGroup | null>(null);
   const [selectedGroupForOption, setSelectedGroupForOption] = useState<string | null>(null);
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   // Customization gruplarını çek
   const { data: groups, isLoading } = useQuery({
@@ -179,6 +215,81 @@ export function CustomizationGroups() {
     enabled: !!restaurantId
   });
 
+  // Fetch menu categories and items
+  const { data: categories } = useQuery({
+    queryKey: ['menu-categories', restaurantId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('menu_categories')
+        .select('*')
+        .eq('restaurant_id', restaurantId)
+        .order('name');
+      return data || [];
+    }
+  });
+
+  const { data: menuItems } = useQuery({
+    queryKey: ['menu-items', restaurantId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('menu_items')
+        .select('*')
+        .eq('restaurant_id', restaurantId)
+        .order('name');
+      return data || [];
+    }
+  });
+
+  // Fetch applied products when editing
+  useEffect(() => {
+    if (editingGroup) {
+      const fetchAppliedProducts = async () => {
+        const { data } = await supabase
+          .from('menu_item_customizations')
+          .select('menu_item_id')
+          .eq('group_id', editingGroup.id);
+        
+        if (data) {
+          setSelectedProducts(data.map(item => item.menu_item_id));
+        }
+      };
+      fetchAppliedProducts();
+    }
+  }, [editingGroup]);
+
+  // Filter menu items based on search and category
+  const filteredItems = useMemo(() => {
+    let items = menuItems || [];
+    
+    if (selectedCategory && selectedCategory !== '_all') {
+      items = items.filter(item => item.category_id === selectedCategory);
+    }
+    
+    if (searchTerm) {
+      items = items.filter(item => 
+        item.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    return items;
+  }, [menuItems, selectedCategory, searchTerm]);
+
+  // Get selected product names for display
+  const selectedProductNames = useMemo(() => {
+    return selectedProducts.map(id => 
+      menuItems?.find(item => item.id === id)?.name || ''
+    ).filter(Boolean);
+  }, [selectedProducts, menuItems]);
+
+  // Handle product selection
+  const toggleProduct = (productId: string) => {
+    setSelectedProducts(prev => 
+      prev.includes(productId)
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    );
+  };
+
   // Grup ekleme mutation'ı
   const createMutation = useMutation({
     mutationFn: async (data: {
@@ -226,8 +337,10 @@ export function CustomizationGroups() {
       is_required: boolean;
       min_selections: number;
       max_selections: number;
+      products: string[];
     }) => {
-      const { error } = await supabase
+      // Update group
+      const { error: groupError } = await supabase
         .from('customization_groups')
         .update({
           name: data.name,
@@ -237,7 +350,31 @@ export function CustomizationGroups() {
           max_selections: data.max_selections
         })
         .eq('id', data.id);
-      if (error) throw error;
+
+      if (groupError) throw groupError;
+
+      // Delete existing associations
+      const { error: deleteError } = await supabase
+        .from('menu_item_customizations')
+        .delete()
+        .eq('group_id', data.id);
+
+      if (deleteError) throw deleteError;
+
+      // Insert new associations
+      if (data.products.length > 0) {
+        const { error: insertError } = await supabase
+          .from('menu_item_customizations')
+          .insert(
+            data.products.map(productId => ({
+              menu_item_id: productId,
+              group_id: data.id,
+              sort_order: 0
+            }))
+          );
+
+        if (insertError) throw insertError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customization-groups'] });
@@ -246,6 +383,9 @@ export function CustomizationGroups() {
         description: "The customization group has been updated successfully.",
       });
       setEditingGroup(null);
+      setSelectedProducts([]);
+      setSelectedCategory(null);
+      setSearchTerm("");
     }
   });
 
@@ -519,7 +659,7 @@ export function CustomizationGroups() {
 
       {/* Edit Group Dialog */}
       <Dialog open={!!editingGroup} onOpenChange={(open) => !open && setEditingGroup(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Customization Group</DialogTitle>
           </DialogHeader>
@@ -534,7 +674,8 @@ export function CustomizationGroups() {
                   description: formData.get("description") as string,
                   is_required: formData.get("isRequired") === "on",
                   min_selections: parseInt(formData.get("minSelections") as string) || 0,
-                  max_selections: parseInt(formData.get("maxSelections") as string) || 1
+                  max_selections: parseInt(formData.get("maxSelections") as string) || 1,
+                  products: selectedProducts
                 });
               }
             }} 
@@ -589,8 +730,72 @@ export function CustomizationGroups() {
                 />
               </div>
             </div>
+            <div className="space-y-4">
+              <Label>Applied for Products</Label>
+              
+              {/* Selected Products Display */}
+              <div className="flex flex-wrap gap-2 mb-2">
+                {selectedProductNames.map(name => (
+                  <Badge key={name} variant="secondary">
+                    {name}
+                  </Badge>
+                ))}
+              </div>
+
+              {/* Category and Search */}
+              <div className="flex gap-4 mb-2">
+                <Select
+                  value={selectedCategory || undefined}
+                  onValueChange={setSelectedCategory}
+                >
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_all">All Categories</SelectItem>
+                    {categories?.map(category => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Input
+                  placeholder="Search products..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="flex-1"
+                />
+              </div>
+
+              {/* Products List */}
+              <ScrollArea className="h-[200px] border rounded-md p-4">
+                <div className="space-y-2">
+                  {filteredItems.map(item => (
+                    <div key={item.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={item.id}
+                        checked={selectedProducts.includes(item.id)}
+                        onCheckedChange={() => toggleProduct(item.id)}
+                      />
+                      <label
+                        htmlFor={item.id}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {item.name}
+                      </label>
+                    </div>
+                  ))}
+                  {filteredItems.length === 0 && (
+                    <p className="text-sm text-gray-500">No products found</p>
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+
             <Button type="submit" className="w-full">
-              Update Group
+              Update Customization Group
             </Button>
           </form>
         </DialogContent>

@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useQueryClient } from '@tanstack/react-query'
+import { useMenuSubscription } from '@/hooks/use-menu-subscription'
 
 type RouteQuery = {
   key: string[]
@@ -32,11 +33,25 @@ const routeQueriesConfig: RouteQueries = {
       key: ['active-menu-items', restaurantId],
       query: async () => await supabase
         .from('menu_items')
-        .select('*, menu_categories(*)')
+        .select(`
+          *,
+          menu_categories(*),
+          customization_groups:menu_item_customizations(
+            customization_groups(
+              id,
+              name,
+              description,
+              is_required,
+              min_selections,
+              max_selections,
+              options:customization_options(*)
+            )
+          )
+        `)
         .eq('restaurant_id', restaurantId)
         .eq('is_available', true),
       priority: 'high',
-      staleTime: 1000 * 60 // 1 minute
+      staleTime: 1000 * 30 // 30 seconds
     },
     {
       key: ['table-info', tableId],
@@ -69,8 +84,8 @@ const routeQueriesConfig: RouteQueries = {
         .from('orders')
         .select('*, order_items(*)')
         .eq('table_id', tableId)
-        .eq('status', 'active')
-        .single(),
+        .eq('status', 'pending')
+        .maybeSingle(),
       priority: 'high',
       staleTime: 1000 * 15 // 15 seconds
     }
@@ -99,6 +114,9 @@ export function ParallelDataProvider({ children }: { children: React.ReactNode }
   }, [getCurrentPath])
 
   const { restaurantId, tableId } = getRouteParams()
+
+  // Activate menu subscription
+  useMenuSubscription(restaurantId)
 
   // Get base route by removing dynamic segments
   const getBaseRoute = useCallback((path: string) => {

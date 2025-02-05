@@ -45,10 +45,10 @@ export async function getActiveOrder(restaurantId: string, tableId: string) {
     .select('*')
     .eq('restaurant_id', restaurantId)
     .eq('table_id', tableId)
-    .in('status', ['pending', 'preparing'])
+    .eq('status', 'pending')
     .order('created_at', { ascending: false })
     .limit(1)
-    .single()
+    .maybeSingle()
 
   return order
 }

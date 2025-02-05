@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Database } from '@/types/supabase'
@@ -85,12 +85,34 @@ interface MenuItemDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
+interface CustomizationOption {
+  id: string
+  name: string
+  price_adjustment: number
+  is_default: boolean
+}
+
+interface CustomizationGroup {
+  id: string
+  name: string
+  description?: string
+  is_required: boolean
+  min_selections: number
+  max_selections: number
+  options: CustomizationOption[]
+}
+
+interface CustomizationSelection {
+  [groupId: string]: string[]
+}
+
 export function MenuItemDialog({ item, open, onOpenChange }: MenuItemDialogProps) {
   // States for different options
   const [selectedExtras, setSelectedExtras] = useState<Record<string, number>>({})
   const [selectedSide, setSelectedSide] = useState<string>('French Fries')
   const [selectedSize, setSelectedSize] = useState<string>('Regular (16 oz)')
   const [selectedMilk, setSelectedMilk] = useState<string>('Whole Milk')
+  const [customizationSelections, setCustomizationSelections] = useState<CustomizationSelection>({})
   
   const addItem = useCartStore((state) => state.addItem)
   const { toast } = useToast()
@@ -98,6 +120,81 @@ export function MenuItemDialog({ item, open, onOpenChange }: MenuItemDialogProps
   // Show conditions
   const isBurger = BURGER_ITEMS.includes(item.name)
   const isCoffee = COFFEE_ITEMS.includes(item.name)
+
+  // Initialize default selections
+  useEffect(() => {
+    if (item.customization_groups) {
+      const initialSelections: CustomizationSelection = {}
+      item.customization_groups.forEach(({ customization_groups: group }) => {
+        // If group has default options, select them
+        const defaultOptions = group.options.filter(opt => opt.is_default)
+        if (defaultOptions.length > 0) {
+          initialSelections[group.id] = defaultOptions.map(opt => opt.id)
+        } else if (group.is_required && group.min_selections > 0) {
+          // If required and no defaults, select first option
+          initialSelections[group.id] = [group.options[0].id]
+        } else {
+          initialSelections[group.id] = []
+        }
+      })
+      setCustomizationSelections(initialSelections)
+    }
+  }, [item.customization_groups])
+
+  const handleOptionToggle = (groupId: string, optionId: string) => {
+    setCustomizationSelections(prev => {
+      const group = item.customization_groups?.find(
+        g => g.customization_groups.id === groupId
+      )?.customization_groups
+
+      if (!group) return prev
+
+      const currentSelections = prev[groupId] || []
+      let newSelections: string[]
+
+      if (currentSelections.includes(optionId)) {
+        // Remove if already selected
+        if (group.is_required && currentSelections.length <= group.min_selections) {
+          // Can't remove if it would violate minimum selections
+          return prev
+        }
+        newSelections = currentSelections.filter(id => id !== optionId)
+      } else {
+        // Add if not selected
+        if (currentSelections.length >= group.max_selections) {
+          // If max selections reached, remove first selection
+          newSelections = [...currentSelections.slice(1), optionId]
+        } else {
+          newSelections = [...currentSelections, optionId]
+        }
+      }
+
+      return {
+        ...prev,
+        [groupId]: newSelections
+      }
+    })
+  }
+
+  // Calculate total price including customizations
+  const calculateTotalPrice = () => {
+    let total = item.price
+
+    // Add customization prices
+    if (item.customization_groups) {
+      item.customization_groups.forEach(({ customization_groups: group }) => {
+        const selectedOptions = customizationSelections[group.id] || []
+        selectedOptions.forEach(optionId => {
+          const option = group.options.find(opt => opt.id === optionId)
+          if (option) {
+            total += option.price_adjustment
+          }
+        })
+      })
+    }
+
+    return total
+  }
 
   const handleAddToCart = () => {
     try {
@@ -205,6 +302,62 @@ export function MenuItemDialog({ item, open, onOpenChange }: MenuItemDialogProps
                       {flag.charAt(0).toUpperCase() + flag.slice(1)}
                     </span>
                   )
+                ))}
+              </div>
+            )}
+
+            {/* Customization Options */}
+            {item.customization_groups && item.customization_groups.length > 0 && (
+              <div className="space-y-6">
+                {item.customization_groups.map(({ customization_groups: group }) => (
+                  <div key={group.id} className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium">{group.name}</h3>
+                        {group.description && (
+                          <p className="text-sm text-muted-foreground">{group.description}</p>
+                        )}
+                      </div>
+                      {group.is_required && (
+                        <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">
+                          Required • Min: {group.min_selections}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-1 gap-2">
+                      {group.options.map((option) => {
+                        const isSelected = (customizationSelections[group.id] || []).includes(option.id)
+                        return (
+                          <button
+                            key={option.id}
+                            onClick={() => handleOptionToggle(group.id, option.id)}
+                            className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                              isSelected
+                                ? 'bg-primary/10 border-primary/20'
+                                : 'bg-secondary/10 hover:bg-secondary/20 border-transparent'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                isSelected ? 'border-primary' : 'border-muted-foreground'
+                              }`}>
+                                {isSelected && (
+                                  <div className="w-3 h-3 rounded-full bg-primary" />
+                                )}
+                              </div>
+                              <span className="font-medium">{option.name}</span>
+                            </div>
+                            {option.price_adjustment > 0 && (
+                              <span className="text-sm text-muted-foreground">
+                                +${option.price_adjustment.toFixed(2)}
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
@@ -367,7 +520,7 @@ export function MenuItemDialog({ item, open, onOpenChange }: MenuItemDialogProps
             size="lg"
             onClick={handleAddToCart}
           >
-            Add to Cart • ${totalPrice.toFixed(2)}
+            Add to Cart • ${calculateTotalPrice().toFixed(2)}
           </Button>
         </div>
       </DialogContent>
