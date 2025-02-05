@@ -219,10 +219,13 @@ export default function TableDetailsPage() {
       )
 
       if (activeOrders.length > 0) {
-        // Mark all active orders as completed
+        // Mark all active orders as completed and update payment status
         const { error: ordersError } = await supabase
           .from('orders')
-          .update({ status: 'completed' })
+          .update({ 
+            status: 'completed',
+            payment_status: 'completed'
+          })
           .in('id', activeOrders.map(order => order.id))
 
         if (ordersError) throw ordersError
@@ -244,14 +247,15 @@ export default function TableDetailsPage() {
           status: 'available',
           orders: prev.orders.map(order => ({
             ...order,
-            status: order.status !== 'cancelled' ? 'completed' : order.status
+            status: order.status !== 'cancelled' ? 'completed' : order.status,
+            payment_status: order.status !== 'cancelled' ? 'completed' : 'pending'
           }))
         }
       })
       
       toast({
         title: 'Success',
-        description: 'Table marked as available and orders completed',
+        description: 'Table marked as available and payment completed',
       })
     } catch (error) {
       console.error('Error updating table status:', error)
@@ -376,12 +380,21 @@ export default function TableDetailsPage() {
               {/* Quick action button for marking as available */}
               {table.status === 'occupied' && (
                 <Button
-                  className="w-full"
+                  className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
                   onClick={handleMarkAsAvailable}
                   disabled={isUpdatingStatus}
                 >
-                  <Check className="mr-2 h-4 w-4" />
-                  Mark as Available (Payment Complete)
+                  {isUpdatingStatus ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                      Processing...
+                    </div>
+                  ) : (
+                    <>
+                      <Check className="mr-2 h-4 w-4" />
+                      Mark as Available (Payment Complete)
+                    </>
+                  )}
                 </Button>
               )}
 

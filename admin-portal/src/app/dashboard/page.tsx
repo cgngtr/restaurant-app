@@ -24,7 +24,9 @@ import { formatCurrency } from '@/lib/utils'
 
 interface OrderData {
   id: string
+  order_number: string
   status: string
+  payment_status: string
   total_amount: number
   created_at: string
   table: {
@@ -43,6 +45,7 @@ interface DashboardStats {
   todayOrderCount: number
   recentOrders: Array<{
     id: string
+    order_number: string
     status: string
     total_amount: number
     created_at: string
@@ -196,7 +199,9 @@ export default function DashboardPage() {
         .from('orders')
         .select(`
           id,
+          order_number,
           status,
+          payment_status,
           total_amount,
           created_at,
           table:tables!inner(
@@ -221,13 +226,16 @@ export default function DashboardPage() {
       )
 
       const todayRevenue = todayOrders
-        .filter(order => order.status !== 'cancelled')
+        .filter(order => order.status !== 'cancelled' && order.payment_status === 'completed')
         .reduce((sum, order) => sum + (order.total_amount || 0), 0)
-      const todayOrderCount = todayOrders.filter(order => order.status !== 'cancelled').length
+      const todayOrderCount = todayOrders
+        .filter(order => order.status !== 'cancelled' && order.payment_status === 'completed')
+        .length
 
       // Get recent orders and ensure proper typing
       const recentOrders = ordersData.slice(0, 5).map(order => ({
         id: String(order.id),
+        order_number: String(order.order_number),
         status: String(order.status),
         total_amount: Number(order.total_amount),
         created_at: String(order.created_at),
@@ -386,7 +394,9 @@ export default function DashboardPage() {
                 onClick={() => setSelectedOrderId(order.id)}
               >
                 <div>
-                  <p className="font-medium">Table {order.table.table_number}</p>
+                  <p className="font-medium">
+                    <span className="font-mono">{order.order_number}</span> • Table {order.table.table_number}
+                  </p>
                   <p className="text-sm text-muted-foreground">
                     {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>

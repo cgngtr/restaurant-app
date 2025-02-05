@@ -57,7 +57,7 @@ export default function CheckoutPage() {
     setIsSubmitting(true)
     
     try {
-      // First, get the table ID and update its status
+      // Get the table ID
       const { data: tableData, error: tableError } = await supabase
         .from('tables')
         .select('id')
@@ -68,17 +68,6 @@ export default function CheckoutPage() {
       if (tableError) {
         console.error('Error fetching table:', tableError);
         throw tableError;
-      }
-
-      // Update table status to occupied
-      const { error: updateError } = await supabase
-        .from('tables')
-        .update({ status: 'occupied' })
-        .eq('id', tableData.id);
-
-      if (updateError) {
-        console.error('Error updating table status:', updateError);
-        throw updateError;
       }
 
       // Create order with UUID
