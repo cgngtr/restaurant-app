@@ -22,32 +22,7 @@ import {
   AlertTitle,
 } from "@/components/ui/alert"
 import NewOrderModal from '@/components/orders/NewOrderModal'
-
-interface TableDetails {
-  id: string
-  table_number: string
-  status: 'available' | 'occupied' | 'reserved'
-  qr_code: string | null
-  orders: Array<{
-    id: string
-    status: string
-    total_amount: number
-    created_at: string
-    order_items: Array<{
-      quantity: number
-      price_at_time: number
-      menu_item: {
-        name: string
-      }
-    }>
-  }>
-  stats: {
-    total_orders: number
-    total_revenue: number
-    average_order_value: number
-  }
-  restaurant_id: string
-}
+import { TableDetails } from '@/types/tables'
 
 export default function TableDetailsPage() {
   const params = useParams()
@@ -79,7 +54,7 @@ export default function TableDetailsPage() {
           created_at,
           order_items (
             quantity,
-            price_at_time,
+            unit_price,
             menu_item:menu_items (
               name
             )
@@ -528,7 +503,7 @@ export default function TableDetailsPage() {
                       <div key={index} className="text-sm flex justify-between">
                         <span>{item.quantity}x {item.menu_item.name}</span>
                         <span className="text-muted-foreground">
-                          ${(item.quantity * item.price_at_time).toFixed(2)}
+                          ${(item.quantity * item.unit_price).toFixed(2)}
                         </span>
                       </div>
                     ))}

@@ -49,7 +49,15 @@ export function OrderDetails({ order, onStatusChange }: OrderDetailsProps) {
         )}
         <div className="flex justify-between items-center">
           <span className="text-sm text-muted-foreground">Status</span>
-          <Badge variant="outline">{order.status}</Badge>
+          <Badge variant="outline" className={
+            order.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+            order.status === 'cancelled' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+            order.status === 'preparing' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+            order.status === 'ready' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
+            'bg-amber-500/10 text-amber-500 border-amber-500/20'
+          }>
+            {order.status}
+          </Badge>
         </div>
       </div>
 
@@ -93,7 +101,14 @@ export function OrderDetails({ order, onStatusChange }: OrderDetailsProps) {
             {availableStatusTransitions.map((status) => (
               <Button
                 key={status}
-                variant={status === 'cancelled' ? 'destructive' : 'default'}
+                variant="outline"
+                className={
+                  status === 'completed' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20 hover:text-emerald-600' :
+                  status === 'cancelled' ? 'bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20 hover:text-red-600' :
+                  status === 'preparing' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20 hover:bg-blue-500/20 hover:text-blue-600' :
+                  status === 'ready' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20 hover:bg-purple-500/20 hover:text-purple-600' :
+                  'bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/20 hover:text-amber-600'
+                }
                 onClick={() => onStatusChange(status as OrderWithDetails['status'])}
               >
                 Mark as {status}

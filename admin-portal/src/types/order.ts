@@ -2,7 +2,7 @@ import type { Database } from './supabase';
 
 export type Order = Database['public']['Tables']['orders']['Row'];
 
-export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 
 export type OrderWithDetails = {
   id: string;

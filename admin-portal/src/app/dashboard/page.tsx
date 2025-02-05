@@ -94,13 +94,12 @@ export default function DashboardPage() {
           created_at,
           updated_at,
           table:tables(table_number),
-          order_items:order_items(
+          order_items(
             id,
             order_id,
             menu_item_id,
             quantity,
             unit_price,
-            customizations,
             menu_item:menu_items(
               name,
               description,
@@ -137,7 +136,6 @@ export default function DashboardPage() {
           menu_item_id: item.menu_item_id,
           quantity: item.quantity,
           unit_price: item.unit_price,
-          customizations: item.customizations || {},
           menu_item: Array.isArray(item.menu_item) && item.menu_item[0] ? {
             name: item.menu_item[0].name,
             description: item.menu_item[0].description,
@@ -222,8 +220,10 @@ export default function DashboardPage() {
         new Date(order.created_at).getTime() >= today.getTime()
       )
 
-      const todayRevenue = todayOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0)
-      const todayOrderCount = todayOrders.length
+      const todayRevenue = todayOrders
+        .filter(order => order.status !== 'cancelled')
+        .reduce((sum, order) => sum + (order.total_amount || 0), 0)
+      const todayOrderCount = todayOrders.filter(order => order.status !== 'cancelled').length
 
       // Get recent orders and ensure proper typing
       const recentOrders = ordersData.slice(0, 5).map(order => ({
@@ -296,21 +296,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back! Here's what's happening today.</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" className="h-9">
-            <Grid className="w-4 h-4 mr-2" />
-            Manage Tables
-          </Button>
-          <Button variant="default" className="h-9 bg-[#0F172A] hover:bg-[#0F172A]/90">
-            <Clock className="w-4 h-4 mr-2" />
-            View Orders
-          </Button>
-        </div>
+      <div>
+        <h1 className="text-2xl font-semibold">Dashboard</h1>
+        <p className="text-muted-foreground">Welcome back! Here's what's happening today.</p>
       </div>
 
       {/* Stats Cards */}
@@ -405,10 +393,12 @@ export default function DashboardPage() {
                 </div>
                 <div className="text-right">
                   <p className="font-medium">{formatCurrency(order.total_amount)}</p>
-                  <span className={`inline-block text-xs px-2 py-0.5 rounded-full ${
-                    order.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500' :
-                    order.status === 'cancelled' ? 'bg-red-500/10 text-red-500' :
-                    'bg-amber-500/10 text-amber-500'
+                  <span className={`inline-block text-xs px-2 py-0.5 rounded-full border ${
+                    order.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                    order.status === 'cancelled' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                    order.status === 'preparing' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                    order.status === 'ready' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
+                    'bg-amber-500/10 text-amber-500 border-amber-500/20'
                   }`}>
                     {order.status}
                   </span>
@@ -424,22 +414,42 @@ export default function DashboardPage() {
           <Card className="p-6">
             <h3 className="font-semibold mb-4">Quick Actions</h3>
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" className="h-24 flex flex-col items-center justify-center bg-white hover:bg-muted/50">
-                <MenuIcon className="h-6 w-6 mb-2" />
-                Update Menu
-              </Button>
-              <Button variant="outline" className="h-24 flex flex-col items-center justify-center bg-white hover:bg-muted/50">
-                <Grid className="h-6 w-6 mb-2" />
-                Manage Tables
-              </Button>
-              <Button variant="outline" className="h-24 flex flex-col items-center justify-center bg-white hover:bg-muted/50">
-                <Clock className="h-6 w-6 mb-2" />
-                View Orders
-              </Button>
-              <Button variant="outline" className="h-24 flex flex-col items-center justify-center bg-white hover:bg-muted/50">
-                <Settings className="h-6 w-6 mb-2" />
-                Settings
-              </Button>
+              <Link href="/menu" className="block">
+                <Button
+                  variant="outline"
+                  className="w-full h-24 flex flex-col items-center justify-center bg-white hover:bg-muted/50"
+                >
+                  <MenuIcon className="h-6 w-6 mb-2" />
+                  Update Menu
+                </Button>
+              </Link>
+              <Link href="/tables" className="block">
+                <Button
+                  variant="outline"
+                  className="w-full h-24 flex flex-col items-center justify-center bg-white hover:bg-muted/50"
+                >
+                  <Grid className="h-6 w-6 mb-2" />
+                  Manage Tables
+                </Button>
+              </Link>
+              <Link href="/orders" className="block">
+                <Button
+                  variant="outline"
+                  className="w-full h-24 flex flex-col items-center justify-center bg-white hover:bg-muted/50"
+                >
+                  <Clock className="h-6 w-6 mb-2" />
+                  View Orders
+                </Button>
+              </Link>
+              <Link href="/settings" className="block">
+                <Button
+                  variant="outline"
+                  className="w-full h-24 flex flex-col items-center justify-center bg-white hover:bg-muted/50"
+                >
+                  <Settings className="h-6 w-6 mb-2" />
+                  Settings
+                </Button>
+              </Link>
             </div>
           </Card>
 
@@ -466,9 +476,12 @@ export default function DashboardPage() {
 
       {/* Order Details Dialog */}
       <Dialog open={!!selectedOrderId} onOpenChange={(open) => !open && setSelectedOrderId(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Order Details</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              View and manage order details, items, and status.
+            </p>
           </DialogHeader>
           {selectedOrder && (
             <OrderDetails

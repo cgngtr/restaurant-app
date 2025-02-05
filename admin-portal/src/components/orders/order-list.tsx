@@ -37,7 +37,15 @@ export function OrderList({ orders, selectedOrderId, onOrderSelect }: OrderListP
                     Table {order.table?.table_number || 'N/A'}
                   </p>
                 </div>
-                <Badge variant="outline">{order.status}</Badge>
+                <Badge variant="outline" className={
+                  order.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                  order.status === 'cancelled' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                  order.status === 'preparing' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                  order.status === 'ready' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
+                  'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                }>
+                  {order.status}
+                </Badge>
               </div>
               <div className="space-y-1">
                 {order.order_items.map((item) => (

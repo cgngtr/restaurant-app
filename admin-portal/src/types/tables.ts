@@ -11,7 +11,7 @@ export interface TableDetails {
     created_at: string
     order_items: Array<{
       quantity: number
-      price_at_time: number
+      unit_price: number
       menu_item: {
         name: string
       }
