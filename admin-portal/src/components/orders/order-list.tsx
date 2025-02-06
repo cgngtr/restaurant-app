@@ -32,7 +32,7 @@ export function OrderList({ orders, selectedOrderId, onOrderSelect }: OrderListP
             >
               <div className="flex justify-between items-start mb-2">
                 <div>
-                  <p className="font-medium">Order #{order.id.slice(0, 8)}</p>
+                  <p className="font-medium">{order.order_number}</p>
                   <p className="text-sm text-muted-foreground">
                     Table {order.table?.table_number || 'N/A'}
                   </p>

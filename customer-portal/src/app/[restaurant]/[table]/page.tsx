@@ -101,7 +101,7 @@ interface PageProps {
 
 export default function RestaurantTablePage({ params }: PageProps) {
   const resolvedParams = use(params)
-  const [activeOrder, setActiveOrder] = useState<{ id: string, status: string } | null>(null)
+  const [activeOrder, setActiveOrder] = useState<{ id: string, status: string, order_number: string } | null>(null)
   const [restaurant, setRestaurant] = useState<RestaurantData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -135,7 +135,7 @@ export default function RestaurantTablePage({ params }: PageProps) {
       if (tableData) {
         const { data: orderData } = await supabase
           .from('orders')
-          .select('id, status')
+          .select('id, status, order_number')
           .eq('table_id', tableData.id)
           .eq('status', 'pending')
           .order('created_at', { ascending: false })
@@ -208,7 +208,7 @@ export default function RestaurantTablePage({ params }: PageProps) {
             }}
           >
             <Clock className="mr-2 h-5 w-5" />
-            View Order Status
+            View Order {activeOrder.order_number}
           </Button>
         </div>
       )}

@@ -28,8 +28,8 @@ export function OrderDetails({ order, onStatusChange }: OrderDetailsProps) {
       {/* Order Info */}
       <div className="space-y-2 pb-4">
         <div className="flex justify-between items-center">
-          <span className="text-sm text-muted-foreground">Order ID</span>
-          <span className="font-mono text-sm">{order.id.slice(0, 8)}</span>
+          <span className="text-sm text-muted-foreground">Order Number</span>
+          <span className="font-mono text-sm">{order.order_number}</span>
         </div>
         <div className="flex justify-between items-center">
           <span className="text-sm text-muted-foreground">Table</span>

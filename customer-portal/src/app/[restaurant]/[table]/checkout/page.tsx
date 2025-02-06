@@ -82,7 +82,7 @@ export default function CheckoutPage() {
           total_amount: getTotal() + 2, // Including service fee
           notes: orderNotes,
         })
-        .select()
+        .select('*, order_number')
         .single();
 
       if (orderError) {

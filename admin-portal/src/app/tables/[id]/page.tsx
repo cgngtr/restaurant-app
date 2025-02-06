@@ -269,61 +269,110 @@ export default function TableDetailsPage() {
   }
 
   const handleCreateOrder = async (items: Array<{ menuItemId: string; quantity: number; notes?: string }>) => {
-    if (!table) return
-    
-    setIsCreatingOrder(true)
+    if (!table) return;
+    setIsCreatingOrder(true);
+
     try {
-      // Create the order
-      const { data: order, error: orderError } = await supabase
+      // Get menu items details for prices
+      const { data: menuItems, error: menuError } = await supabase
+        .from('menu_items')
+        .select('id, price')
+        .in('id', items.map(item => item.menuItemId));
+
+      if (menuError) throw menuError;
+
+      const menuItemPrices = new Map(menuItems.map(item => [item.id, item.price]));
+
+      // Create order
+      const orderId = crypto.randomUUID();
+      const totalAmount = items.reduce((sum, item) => {
+        const price = menuItemPrices.get(item.menuItemId) || 0;
+        return sum + (price * item.quantity);
+      }, 0);
+
+      // Get next manual order number
+      const { data: sequenceData, error: sequenceError } = await supabase
+        .rpc('next_manual_order_number', { table_number: table.table_number });
+
+      if (sequenceError) throw sequenceError;
+
+      const orderNumber = `MN-B${table.table_number}-${String(sequenceData).padStart(4, '0')}`;
+      console.log('Generated order number:', orderNumber); // Debug log
+
+      // First, try to insert order without select
+      const { error: insertError } = await supabase
         .from('orders')
         .insert({
+          id: orderId,
+          order_number: orderNumber,
           restaurant_id: table.restaurant_id,
           table_id: table.id,
           status: 'pending',
-          total_amount: 0, // Will be calculated by trigger
-        })
-        .select()
-        .single()
+          total_amount: totalAmount,
+        });
 
-      if (orderError) throw orderError
+      if (insertError) {
+        console.error('Order insert error:', insertError);
+        throw insertError;
+      }
 
-      // Create order items
+      // Then fetch the created order
+      const { data: createdOrder, error: fetchError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', orderId)
+        .single();
+
+      if (fetchError) {
+        console.error('Order fetch error:', fetchError);
+        throw fetchError;
+      }
+
+      console.log('Created order:', createdOrder); // Debug log
+
+      // Create order items with unit prices
       const orderItems = items.map(item => ({
-        order_id: order.id,
+        id: crypto.randomUUID(),
+        order_id: orderId,
         menu_item_id: item.menuItemId,
         quantity: item.quantity,
+        unit_price: menuItemPrices.get(item.menuItemId) || 0,
         notes: item.notes,
-      }))
+      }));
 
       const { error: itemsError } = await supabase
         .from('order_items')
-        .insert(orderItems)
+        .insert(orderItems);
 
-      if (itemsError) throw itemsError
+      if (itemsError) throw itemsError;
 
-      // Update table status if not already occupied
-      if (table.status === 'available') {
-        await updateTableStatus('occupied')
-      }
+      // Update table status to occupied
+      const { error: tableError } = await supabase
+        .from('tables')
+        .update({ status: 'occupied' })
+        .eq('id', table.id);
+
+      if (tableError) throw tableError;
 
       // Refresh table details
-      await fetchTableDetails()
-      
-      setIsOrderModalOpen(false)
+      await fetchTableDetails();
+
       toast({
         title: 'Success',
         description: 'Order created successfully',
-      })
+      });
+
+      setIsOrderModalOpen(false);
     } catch (error) {
-      console.error('Error creating order:', error)
+      console.error('Error creating order:', error);
       toast({
         title: 'Error',
         description: 'Failed to create order',
         variant: 'destructive',
-      })
+      });
     }
-    setIsCreatingOrder(false)
-  }
+    setIsCreatingOrder(false);
+  };
 
   if (isLoading || !table) {
     return (

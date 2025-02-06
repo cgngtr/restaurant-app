@@ -23,6 +23,7 @@ interface OrderItem {
 
 interface Order {
   id: string
+  order_number: string
   status: OrderStatus
   total_amount: number
   notes?: string
@@ -188,8 +189,8 @@ export default function OrderStatusPage({ params }: Props) {
 
           <div className="space-y-4">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Order ID</span>
-              <span className="font-medium">{order.id}</span>
+              <span className="text-muted-foreground">Order Number</span>
+              <span className="font-medium">{order.order_number}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Table Number</span>

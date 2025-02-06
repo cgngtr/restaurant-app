@@ -13,6 +13,7 @@ export type OrderWithDetails = {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  order_number: string;
   order_items: OrderItem[];
   table: {
     table_number: string;

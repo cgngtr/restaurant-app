@@ -141,6 +141,7 @@ export interface Database {
       orders: {
         Row: {
           id: string
+          order_number: string
           restaurant_id: string
           table_id: string
           status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled'
@@ -151,6 +152,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          order_number?: string
           restaurant_id: string
           table_id: string
           status?: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled'
@@ -161,6 +163,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          order_number?: string
           restaurant_id?: string
           table_id?: string
           status?: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled'

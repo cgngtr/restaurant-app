@@ -22,6 +22,7 @@ export default function OrdersPage() {
         .from('orders')
         .select(`
           *,
+          order_number,
           table:tables(table_number),
           order_items(
             *,
