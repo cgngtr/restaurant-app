@@ -96,7 +96,8 @@ export default function DashboardPage() {
           notes,
           created_at,
           updated_at,
-          table:tables(table_number),
+          order_number,
+          table:tables!inner(table_number),
           order_items(
             id,
             order_id,
@@ -130,19 +131,20 @@ export default function DashboardPage() {
         notes: orderData.notes,
         created_at: orderData.created_at,
         updated_at: orderData.updated_at,
-        table: Array.isArray(orderData.table) && orderData.table[0] ? {
-          table_number: orderData.table[0].table_number
-        } : null,
-        order_items: orderData.order_items.map((item) => ({
+        order_number: orderData.order_number,
+        table: {
+          table_number: (orderData.table as any).table_number
+        },
+        order_items: (orderData.order_items || []).map((item: any) => ({
           id: item.id,
           order_id: item.order_id,
           menu_item_id: item.menu_item_id,
           quantity: item.quantity,
           unit_price: item.unit_price,
-          menu_item: Array.isArray(item.menu_item) && item.menu_item[0] ? {
-            name: item.menu_item[0].name,
-            description: item.menu_item[0].description,
-            price: item.menu_item[0].price
+          menu_item: item.menu_item ? {
+            name: item.menu_item.name,
+            description: item.menu_item.description,
+            price: item.menu_item.price
           } : {
             name: 'Unknown Item',
             description: '',

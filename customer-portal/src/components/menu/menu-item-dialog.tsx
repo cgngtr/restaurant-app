@@ -19,7 +19,9 @@ interface MenuItemWithExtras extends MenuItem {
     milk?: string;
     side?: string;
     extras?: Record<string, number>;
+    customizations?: { name: string; price_adjustment: number }[];
   }
+  adjustedPrice?: number;
 }
 
 interface DietaryFlag {
@@ -239,25 +241,45 @@ export function MenuItemDialog({ item, open, onOpenChange }: MenuItemDialogProps
 
   const handleAddToCart = () => {
     try {
+      const totalPrice = calculateTotalPrice();
+      
+      // Collect selected customizations
+      const selectedCustomizations = Object.entries(customizationSelections).flatMap(([groupId, optionIds]) => {
+        const group = item.customization_groups?.find(g => g.customization_groups.id === groupId)?.customization_groups;
+        if (!group) return [];
+        
+        return optionIds.map(optionId => {
+          const option = group.options.find(opt => opt.id === optionId);
+          return option ? {
+            name: option.name,
+            price_adjustment: option.price_adjustment
+          } : undefined;
+        }).filter((item): item is { name: string; price_adjustment: number } => item !== undefined);
+      });
+
       const itemWithExtras: MenuItemWithExtras = {
         ...item,
+        adjustedPrice: totalPrice,
         extras: {
           size: isCoffee ? selectedSize : undefined,
           milk: isCoffee ? selectedMilk : undefined,
           side: isBurger ? selectedSide : undefined,
-          extras: isBurger ? selectedExtras : undefined
+          extras: isBurger ? selectedExtras : undefined,
+          customizations: selectedCustomizations
         }
       }
+      
       addItem(itemWithExtras)
+      onOpenChange(false)
       toast({
-        title: 'Added to cart',
+        title: 'Added to Cart',
         description: `${item.name} has been added to your cart.`,
       })
-      onOpenChange(false)
     } catch (error) {
+      console.error('Error adding item to cart:', error)
       toast({
         title: 'Error',
-        description: 'Failed to add item to cart. Please try again.',
+        description: 'Failed to add item to cart.',
         variant: 'destructive',
       })
     }

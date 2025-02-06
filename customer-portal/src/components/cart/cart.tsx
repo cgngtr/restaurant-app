@@ -63,9 +63,9 @@ export function Cart() {
           <>
             <ScrollArea className="h-[calc(100vh-12rem)] pr-4">
               <AnimateList className="space-y-4">
-                {items.map((item) => (
+                {items.map((item, index) => (
                   <ListItem
-                    key={item.id}
+                    key={`${item.id}-${JSON.stringify(item.extras)}-${index}`}
                     className="flex flex-col space-y-2 border-b pb-4"
                   >
                     <div className="flex items-start justify-between gap-4">
@@ -92,8 +92,21 @@ export function Cart() {
                         <div className="space-y-1">
                           <h4 className="font-medium">{item.name}</h4>
                           <p className="text-sm text-muted-foreground">
-                            {formatCurrency(item.price)} each
+                            {formatCurrency(item.price)}
+                            {item.extras?.customizations?.map((customization, index, array) => (
+                              <span key={index}>
+                                {index === 0 ? ' (' : ', '}
+                                {customization.name}
+                                {customization.price_adjustment > 0 && `, ${formatCurrency(customization.price_adjustment)}`}
+                                {index === array.length - 1 && ')'}
+                              </span>
+                            ))}
                           </p>
+                          {item.extras && (
+                            <p className="text-xs text-muted-foreground">
+                              {item.extras.size && `Size: ${item.extras.size}`}
+                            </p>
+                          )}
                         </div>
                         <motion.div className="flex items-center space-x-2 mt-2">
                           <motion.div whileTap={{ scale: 0.9 }}>
@@ -132,7 +145,7 @@ export function Cart() {
                           variant="ghost"
                           size="sm"
                           className="text-destructive"
-                          onClick={() => removeItem(item.id)}
+                          onClick={() => removeItem(item.id, item.extras)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
