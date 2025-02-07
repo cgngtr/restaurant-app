@@ -93,18 +93,28 @@ export function Cart() {
                           <h4 className="font-medium">{item.name}</h4>
                           <p className="text-sm text-muted-foreground">
                             {formatCurrency(item.price)}
-                            {item.extras?.customizations?.map((customization, index, array) => (
-                              <span key={index}>
-                                {index === 0 ? ' (' : ', '}
-                                {customization.name}
-                                {customization.price_adjustment > 0 && `, ${formatCurrency(customization.price_adjustment)}`}
-                                {index === array.length - 1 && ')'}
-                              </span>
-                            ))}
                           </p>
-                          {item.extras && (
-                            <p className="text-xs text-muted-foreground">
-                              {item.extras.size && `Size: ${item.extras.size}`}
+                          {item.extras?.customizations && item.extras.customizations.length > 0 && (
+                            <div className="mt-1.5 space-y-1">
+                              {item.extras.customizations.map((customization, index) => (
+                                <div key={index} className="flex items-center justify-between text-xs text-muted-foreground">
+                                  <div className="flex items-center">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 mr-2" />
+                                    <span>{customization.name}</span>
+                                  </div>
+                                  {customization.price_adjustment > 0 && (
+                                    <span>+{formatCurrency(customization.price_adjustment)}</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {item.extras && item.extras.size && (
+                            <p className="text-xs text-muted-foreground mt-1.5">
+                              <span className="inline-flex items-center">
+                                <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 mr-2" />
+                                Size: {item.extras.size}
+                              </span>
                             </p>
                           )}
                         </div>

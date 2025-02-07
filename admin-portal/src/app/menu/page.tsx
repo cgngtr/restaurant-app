@@ -25,6 +25,7 @@ import type { Database } from '@/types/supabase'
 import type { MenuItem } from '@/types/menu'
 import { NewItemModal } from '@/components/menu/new-item-modal'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useRouter } from 'next/navigation'
 
 type MenuCategory = Database['public']['Tables']['menu_categories']['Row']
 
@@ -48,6 +49,8 @@ interface Category {
 }
 
 export default function MenuPage() {
+  const router = useRouter()
+  const [session, setSession] = useState<any>(null)
   const [items, setItems] = useState<MenuItem[]>([])
   const [categories, setCategories] = useState<MenuCategory[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
@@ -56,47 +59,187 @@ export default function MenuPage() {
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
 
-  // Sayfa yüklendiğinde verileri çek
+  // Session kontrolü için useEffect ekleyelim
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsLoading(true)
-        
-        // Kategorileri yükle
-        const { data: categoriesData, error: categoriesError } = await supabase
-          .from('menu_categories')
-          .select('*')
-          .order('sort_order')
-
-        if (categoriesError) throw categoriesError
-
-        // Menü öğelerini yükle
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('menu_items')
-          .select(`
-            *,
-            category:menu_categories (
-              name
-            )
-          `)
-
-        if (itemsError) throw itemsError
-
-        setCategories(categoriesData)
-        setItems(itemsData)
-      } catch (error: any) {
+    const checkSession = async () => {
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      if (error || !session) {
+        console.error('Auth error:', error)
         toast({
           title: 'Error',
-          description: 'Failed to load menu data',
+          description: 'Lütfen önce giriş yapın',
           variant: 'destructive',
         })
-      } finally {
-        setIsLoading(false)
+        router.push('/auth/login')
+        return
       }
+
+      setSession(session)
     }
 
-    loadData()
+    checkSession()
+  }, [router])
+
+  // loadData fonksiyonunu güncelleyelim
+  const loadData = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      
+      // Kategorileri yükle
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('menu_categories')
+        .select('*')
+        .order('sort_order')
+
+      if (categoriesError) throw categoriesError
+
+      // Menü öğelerini yükle
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('menu_items')
+        .select(`
+          *,
+          category:menu_categories (
+            name
+          )
+        `)
+
+      if (itemsError) throw itemsError
+
+      setCategories(categoriesData)
+      setItems(itemsData)
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load menu data',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }, [toast])
+
+  // Sayfa yüklendiğinde verileri çek
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  // CSV Import fonksiyonunu güncelleyelim
+  const handleCsvImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!session) {
+      toast({
+        title: 'Error',
+        description: 'Lütfen önce giriş yapın',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    try {
+      const text = await file.text()
+      
+      // CSV ayrıştırma fonksiyonu
+      const parseCSVLine = (line: string) => {
+        const result = []
+        let startValueIndex = 0
+        let inQuotes = false
+        
+        for (let i = 0; i < line.length; i++) {
+          if (line[i] === '"') {
+            inQuotes = !inQuotes
+          } else if (line[i] === ',' && !inQuotes) {
+            result.push(line.slice(startValueIndex, i).trim().replace(/^"|"$/g, ''))
+            startValueIndex = i + 1
+          }
+        }
+        
+        // Son değeri ekle
+        result.push(line.slice(startValueIndex).trim().replace(/^"|"$/g, ''))
+        return result
+      }
+
+      // Satırları ayır ve boş satırları filtrele
+      const rows = text.split(/\r?\n/).filter(row => row.trim())
+      
+      // Başlıkları ayrıştır
+      const headers = parseCSVLine(rows[0])
+      
+      // CSV başlıklarını kontrol et
+      const requiredHeaders = ['id', 'restaurant_id', 'category_id', 'name', 'description', 'price', 'image_url', 'is_available', 'created_at', 'customization_options']
+      const hasAllHeaders = requiredHeaders.every(header => headers.includes(header))
+      
+      if (!hasAllHeaders) {
+        throw new Error('CSV dosyası gerekli tüm sütunları içermiyor')
+      }
+
+      console.log('Headers:', headers) // Debug için
+
+      // İlk satırı (başlıkları) atla ve her satırı işle
+      const menuItems = rows.slice(1)
+        .filter(row => row.trim())
+        .map((row, index) => {
+          try {
+            const values = parseCSVLine(row)
+            
+            console.log(`Row ${index + 1} values:`, values) // Debug için
+
+            if (values.length !== headers.length) {
+              throw new Error(`Satır ${index + 2}'de sütun sayısı uyuşmuyor`)
+            }
+
+            return {
+              id: values[headers.indexOf('id')],
+              restaurant_id: values[headers.indexOf('restaurant_id')],
+              category_id: values[headers.indexOf('category_id')],
+              name: values[headers.indexOf('name')],
+              description: values[headers.indexOf('description')],
+              price: parseFloat(values[headers.indexOf('price')]),
+              image_url: values[headers.indexOf('image_url')],
+              is_available: values[headers.indexOf('is_available')].toLowerCase() === 'true',
+              created_at: values[headers.indexOf('created_at')],
+              customization_options: values[headers.indexOf('customization_options')] === '{}' ? {} : 
+                JSON.parse(values[headers.indexOf('customization_options')])
+            }
+          } catch (err: any) {
+            console.error(`Error parsing row ${index + 2}:`, err)
+            throw new Error(`Satır ${index + 2}'de hata: ${err.message}`)
+          }
+        })
+
+      console.log('Parsed items:', menuItems) // Debug için
+
+      // Supabase'e eklerken session kontrolü yap
+      const { error } = await supabase
+        .from('menu_items')
+        .insert(menuItems)
+
+      if (error) {
+        console.error('Supabase error:', error)
+        throw error
+      }
+
+      toast({
+        title: 'Success',
+        description: `${menuItems.length} ürün başarıyla import edildi.`,
+      })
+
+      // Listeyi güncelle
+      loadData()
+    } catch (error: any) {
+      console.error('CSV import error:', error)
+      toast({
+        title: 'Error',
+        description: error.message || 'CSV dosyası import edilirken bir hata oluştu.',
+        variant: 'destructive',
+      })
+    }
+
+    // Input'u temizle
+    event.target.value = ''
+  }
 
   // Yeni menü öğesi oluştur
   const handleCreateItem = async (newItem: Partial<MenuItem>) => {
@@ -192,54 +335,81 @@ export default function MenuPage() {
     return matchesCategory && matchesSearch
   })
 
-  if (isLoading) {
+  // Loading state'ini güncelleyelim
+  if (!session || isLoading) {
     return (
       <div className="container mx-auto p-4">
         <div className="flex items-center justify-center h-[60vh]">
-          <p className="text-lg text-muted-foreground">Loading menu...</p>
+          <p className="text-lg text-muted-foreground">
+            {!session ? 'Checking authentication...' : 'Loading menu...'}
+          </p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Menu Management</h1>
-        <Button onClick={() => setIsModalOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Item
-        </Button>
-      </div>
+    <div className="container mx-auto py-10">
+      <div className="flex justify-between items-center mb-8">
+        <div className="flex items-center space-x-4">
+          <Select
+            value={selectedCategory || 'all'}
+            onValueChange={(value) => setSelectedCategory(value === 'all' ? null : value)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-      <div className="flex gap-4">
-        <div className="flex-1">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search menu items..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-8"
             />
           </div>
         </div>
-        <Select 
-          value={selectedCategory || undefined} 
-          onValueChange={setSelectedCategory}
-        >
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="All Categories" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {categories.map((category) => (
-              <SelectItem key={category.id} value={category.id}>
-                {category.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+
+        <div className="flex items-center space-x-4">
+          <div className="relative">
+            <Input
+              type="file"
+              accept=".csv"
+              onChange={handleCsvImport}
+              className="hidden"
+              id="csv-upload"
+            />
+            <Button
+              variant="outline"
+              onClick={() => document.getElementById('csv-upload')?.click()}
+            >
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Import CSV
+            </Button>
+          </div>
+
+          <NewItemModal
+            open={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            onSubmit={handleCreateItem}
+            categories={categories}
+          />
+          
+          <Button onClick={() => setIsModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Item
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -253,13 +423,6 @@ export default function MenuPage() {
           />
         ))}
       </div>
-
-      <NewItemModal
-        open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handleCreateItem}
-        categories={categories}
-      />
     </div>
   )
 } 
