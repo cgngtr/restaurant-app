@@ -22,7 +22,7 @@ import { Switch } from "@/components/ui/switch"
 import { MenuItemCard as NewMenuItemCard } from '@/components/menu/MenuItemCard'
 import { useToast } from '@/components/ui/use-toast'
 import type { Database } from '@/types/supabase'
-import type { MenuItem } from '@/types/menu'
+import type { MenuItem, DietaryFlag } from '@/types/menu'
 import { NewItemModal } from '@/components/menu/new-item-modal'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useRouter } from 'next/navigation'
@@ -36,10 +36,25 @@ interface CustomizationOption {
 
 interface CustomizationOptions {
   type: 'burger' | 'coffee' | null;
+  [key: string]: any;
   extras: Record<string, number>;
   sides: Record<string, number>;
   sizes: Record<string, number>;
   milk_options: Record<string, number>;
+}
+
+interface CustomizationGroup {
+  id: string;
+  name: string;
+  type: 'burger' | 'coffee' | null;
+  options: Record<string, number>;
+}
+
+interface MenuItemCustomization {
+  id: string;
+  group_id: string;
+  sort_order: number;
+  customization_groups: CustomizationGroup;
 }
 
 interface Category {
@@ -48,9 +63,12 @@ interface Category {
   sort_order: number;
 }
 
+interface MenuItemDietaryFlag {
+  dietary_flag: DietaryFlag;
+}
+
 export default function MenuPage() {
   const router = useRouter()
-  const [session, setSession] = useState<any>(null)
   const [items, setItems] = useState<MenuItem[]>([])
   const [categories, setCategories] = useState<MenuCategory[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
@@ -58,28 +76,6 @@ export default function MenuPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
-
-  // Session kontrolü için useEffect ekleyelim
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession()
-      
-      if (error || !session) {
-        console.error('Auth error:', error)
-        toast({
-          title: 'Error',
-          description: 'Lütfen önce giriş yapın',
-          variant: 'destructive',
-        })
-        router.push('/auth/login')
-        return
-      }
-
-      setSession(session)
-    }
-
-    checkSession()
-  }, [router])
 
   // loadData fonksiyonunu güncelleyelim
   const loadData = useCallback(async () => {
@@ -94,21 +90,88 @@ export default function MenuPage() {
 
       if (categoriesError) throw categoriesError
 
-      // Menü öğelerini yükle
+      // Menü öğelerini, dietary flags ve customization bilgilerini yükle
       const { data: itemsData, error: itemsError } = await supabase
         .from('menu_items')
         .select(`
           *,
           category:menu_categories (
             name
+          ),
+          menu_item_customizations (
+            id,
+            group_id,
+            sort_order,
+            customization_groups (
+              id,
+              name,
+              type,
+              options
+            )
+          ),
+          menu_item_dietary_flags (
+            dietary_flag: dietary_flags (
+              id,
+              name,
+              description,
+              icon_url
+            )
           )
         `)
+        .order('name')
 
       if (itemsError) throw itemsError
 
+      // Customization ve dietary flags bilgilerini düzenle
+      const itemsWithCustomizations = itemsData?.map(item => {
+        const customOptions: CustomizationOptions = {
+          type: null,
+          extras: {},
+          sides: {},
+          sizes: {},
+          milk_options: {}
+        }
+
+        // Customization options
+        item.menu_item_customizations?.forEach((curr: MenuItemCustomization) => {
+          const group = curr.customization_groups
+          if (group && group.type) {
+            customOptions.type = group.type
+            switch (group.type) {
+              case 'burger':
+              case 'coffee':
+                if (group.options) {
+                  if (group.name.toLowerCase().includes('extra')) {
+                    customOptions.extras = { ...customOptions.extras, ...group.options }
+                  } else if (group.name.toLowerCase().includes('side')) {
+                    customOptions.sides = { ...customOptions.sides, ...group.options }
+                  } else if (group.name.toLowerCase().includes('size')) {
+                    customOptions.sizes = { ...customOptions.sizes, ...group.options }
+                  } else if (group.name.toLowerCase().includes('milk')) {
+                    customOptions.milk_options = { ...customOptions.milk_options, ...group.options }
+                  }
+                }
+                break
+            }
+          }
+        })
+
+        // Dietary flags
+        const dietary_flags = item.menu_item_dietary_flags?.map((flag: MenuItemDietaryFlag) => flag.dietary_flag) || []
+
+        return {
+          ...item,
+          customization_options: customOptions,
+          dietary_flags
+        }
+      })
+
+      console.log('Loaded items:', itemsWithCustomizations) // Debug için
+
       setCategories(categoriesData)
-      setItems(itemsData)
+      setItems(itemsWithCustomizations || [])
     } catch (error: any) {
+      console.error('Error loading menu data:', error)
       toast({
         title: 'Error',
         description: 'Failed to load menu data',
@@ -126,15 +189,6 @@ export default function MenuPage() {
 
   // CSV Import fonksiyonunu güncelleyelim
   const handleCsvImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!session) {
-      toast({
-        title: 'Error',
-        description: 'Lütfen önce giriş yapın',
-        variant: 'destructive',
-      })
-      return
-    }
-
     const file = event.target.files?.[0]
     if (!file) return
 
@@ -176,69 +230,41 @@ export default function MenuPage() {
       }
 
       console.log('Headers:', headers) // Debug için
-
-      // İlk satırı (başlıkları) atla ve her satırı işle
-      const menuItems = rows.slice(1)
-        .filter(row => row.trim())
-        .map((row, index) => {
-          try {
-            const values = parseCSVLine(row)
-            
-            console.log(`Row ${index + 1} values:`, values) // Debug için
-
-            if (values.length !== headers.length) {
-              throw new Error(`Satır ${index + 2}'de sütun sayısı uyuşmuyor`)
-            }
-
-            return {
-              id: values[headers.indexOf('id')],
-              restaurant_id: values[headers.indexOf('restaurant_id')],
-              category_id: values[headers.indexOf('category_id')],
-              name: values[headers.indexOf('name')],
-              description: values[headers.indexOf('description')],
-              price: parseFloat(values[headers.indexOf('price')]),
-              image_url: values[headers.indexOf('image_url')],
-              is_available: values[headers.indexOf('is_available')].toLowerCase() === 'true',
-              created_at: values[headers.indexOf('created_at')],
-              customization_options: values[headers.indexOf('customization_options')] === '{}' ? {} : 
-                JSON.parse(values[headers.indexOf('customization_options')])
-            }
-          } catch (err: any) {
-            console.error(`Error parsing row ${index + 2}:`, err)
-            throw new Error(`Satır ${index + 2}'de hata: ${err.message}`)
-          }
-        })
-
-      console.log('Parsed items:', menuItems) // Debug için
-
-      // Supabase'e eklerken session kontrolü yap
-      const { error } = await supabase
-        .from('menu_items')
-        .insert(menuItems)
-
-      if (error) {
-        console.error('Supabase error:', error)
-        throw error
-      }
-
-      toast({
-        title: 'Success',
-        description: `${menuItems.length} ürün başarıyla import edildi.`,
-      })
-
-      // Listeyi güncelle
-      loadData()
-    } catch (error: any) {
-      console.error('CSV import error:', error)
+    } catch (error) {
+      console.error('Error importing CSV:', error)
       toast({
         title: 'Error',
-        description: error.message || 'CSV dosyası import edilirken bir hata oluştu.',
+        description: 'Failed to import CSV file',
         variant: 'destructive',
       })
     }
+  }
 
-    // Input'u temizle
-    event.target.value = ''
+  // Menü öğesini sil
+  const handleDeleteItem = async (itemId: string) => {
+    if (!confirm('Are you sure you want to delete this item?')) return
+
+    try {
+      const { error } = await supabase
+        .from('menu_items')
+        .delete()
+        .eq('id', itemId)
+
+      if (error) throw error
+
+      setItems((prev) => prev.filter((item) => item.id !== itemId))
+      toast({
+        title: 'Success',
+        description: 'Menu item deleted successfully',
+      })
+    } catch (error) {
+      console.error('Error deleting menu item:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to delete menu item',
+        variant: 'destructive',
+      })
+    }
   }
 
   // Yeni menü öğesi oluştur
@@ -298,33 +324,6 @@ export default function MenuPage() {
     }
   }
 
-  // Menü öğesini sil
-  const handleDeleteItem = async (itemId: string) => {
-    if (!confirm('Are you sure you want to delete this item?')) return
-
-    try {
-      const { error } = await supabase
-        .from('menu_items')
-        .delete()
-        .eq('id', itemId)
-
-      if (error) throw error
-
-      setItems((prev) => prev.filter((item) => item.id !== itemId))
-      toast({
-        title: 'Success',
-        description: 'Menu item deleted successfully',
-      })
-    } catch (error) {
-      console.error('Error deleting menu item:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to delete menu item',
-        variant: 'destructive',
-      })
-    }
-  }
-
   // Filtrelenmiş menü öğeleri
   const filteredItems = items.filter((item) => {
     const matchesCategory = !selectedCategory || selectedCategory === 'all' || item.category_id === selectedCategory;
@@ -335,14 +334,12 @@ export default function MenuPage() {
     return matchesCategory && matchesSearch
   })
 
-  // Loading state'ini güncelleyelim
-  if (!session || isLoading) {
+  // Loading state
+  if (isLoading) {
     return (
       <div className="container mx-auto p-4">
         <div className="flex items-center justify-center h-[60vh]">
-          <p className="text-lg text-muted-foreground">
-            {!session ? 'Checking authentication...' : 'Loading menu...'}
-          </p>
+          <p className="text-lg text-muted-foreground">Loading menu...</p>
         </div>
       </div>
     )
