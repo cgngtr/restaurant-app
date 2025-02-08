@@ -79,7 +79,7 @@ export function OrderDetails({ order, onStatusChange }: OrderDetailsProps) {
                   </p>
                 )}
               </div>
-              <span className="font-medium">${(item.unit_price * item.quantity).toFixed(2)}</span>
+              <span className="font-medium">₺{(item.unit_price * item.quantity).toFixed(2)}</span>
             </div>
           ))}
         </div>
@@ -89,7 +89,7 @@ export function OrderDetails({ order, onStatusChange }: OrderDetailsProps) {
       <div className="py-4">
         <div className="flex justify-between items-center">
           <span className="font-medium">Total</span>
-          <span className="font-medium">${order.total_amount.toFixed(2)}</span>
+          <span className="font-medium">₺{order.total_amount.toFixed(2)}</span>
         </div>
       </div>
 

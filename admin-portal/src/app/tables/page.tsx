@@ -250,7 +250,9 @@ export default function TablesPage() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Total Revenue</span>
-                  <span className="font-medium">${table.total_revenue.toFixed(2)}</span>
+                  <div className="text-sm text-gray-600">
+                    <span className="font-medium">₺{table.total_revenue.toFixed(2)}</span>
+                  </div>
                 </div>
                 {table.active_order && (
                   <div className="mt-4 p-2 bg-yellow-50 rounded-md">
@@ -258,7 +260,7 @@ export default function TablesPage() {
                     <div className="text-sm text-yellow-800">
                       Status: {table.active_order.status}
                       <br />
-                      Amount: ${table.active_order.total_amount.toFixed(2)}
+                      Amount: ₺{table.active_order.total_amount.toFixed(2)}
                     </div>
                   </div>
                 )}

@@ -358,7 +358,7 @@ export function MenuItemCard({ item, categories, onEdit, onDelete }: MenuItemCar
               {item.name}
             </h3>
             <span className="text-lg font-bold text-primary whitespace-nowrap">
-              ${item.price.toFixed(2)}
+              ₺{item.price.toFixed(2)}
             </span>
           </div>
 
@@ -417,7 +417,7 @@ export function MenuItemCard({ item, categories, onEdit, onDelete }: MenuItemCar
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="price" className="text-sm font-medium">Price ($)</Label>
+                <Label htmlFor="price" className="text-sm font-medium">Price (₺)</Label>
                 <Input
                   id="price"
                   type="number"

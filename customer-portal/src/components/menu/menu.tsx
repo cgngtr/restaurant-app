@@ -212,7 +212,7 @@ export function Menu({ restaurantName, tableNumber, categories, items }: MenuPro
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
                     <div className="absolute bottom-0 left-0 right-0 p-3">
                       <h3 className="text-sm font-medium text-white line-clamp-2">{menuItem.name}</h3>
-                      <p className="text-sm font-medium text-white/90">${menuItem.price.toFixed(2)}</p>
+                      <p className="text-sm font-medium text-white/90">₺{menuItem.price.toFixed(2)}</p>
                     </div>
                   </div>
                 </div>

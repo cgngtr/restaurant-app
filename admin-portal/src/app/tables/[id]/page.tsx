@@ -478,11 +478,11 @@ export default function TableDetailsPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total Revenue</span>
-                <span className="font-medium">${table.stats.total_revenue.toFixed(2)}</span>
+                <span className="font-medium">₺{table.stats.total_revenue.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Average Order Value</span>
-                <span className="font-medium">${table.stats.average_order_value.toFixed(2)}</span>
+                <span className="font-medium">₺{table.stats.average_order_value.toFixed(2)}</span>
               </div>
             </div>
           </Card>
@@ -557,7 +557,7 @@ export default function TableDetailsPage() {
                       </p>
                     </div>
                     <span className="font-medium">
-                      ${order.total_amount.toFixed(2)}
+                      ₺{order.total_amount.toFixed(2)}
                     </span>
                   </div>
                   <div className="mt-2 space-y-1">
@@ -565,7 +565,7 @@ export default function TableDetailsPage() {
                       <div key={index} className="text-sm flex justify-between">
                         <span>{item.quantity}x {item.menu_item.name}</span>
                         <span className="text-muted-foreground">
-                          ${(item.quantity * item.unit_price).toFixed(2)}
+                          ₺{(item.quantity * item.unit_price).toFixed(2)}
                         </span>
                       </div>
                     ))}

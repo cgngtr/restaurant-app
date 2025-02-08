@@ -83,7 +83,7 @@ export default function CartItem({
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="font-medium">{item.name}</h3>
-                <p className="text-sm text-gray-600">${calculateItemTotal().toFixed(2)}</p>
+                <p className="text-sm text-gray-600">₺{calculateItemTotal().toFixed(2)}</p>
               </div>
               <Button
                 variant="ghost"

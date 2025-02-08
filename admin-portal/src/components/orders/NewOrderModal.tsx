@@ -288,7 +288,7 @@ export default function NewOrderModal({ table, onClose, onSubmit, isLoading }: N
                           <div className="absolute inset-0 p-4 flex flex-col justify-end">
                             <h3 className="font-medium text-white">{item.name}</h3>
                             <p className="text-sm text-white/80 line-clamp-2">{item.description}</p>
-                            <p className="font-medium text-white mt-2">${item.price.toFixed(2)}</p>
+                            <p className="font-medium text-white mt-2">₺{item.price.toFixed(2)}</p>
                           </div>
                         </div>
                       </div>
@@ -357,7 +357,7 @@ export default function NewOrderModal({ table, onClose, onSubmit, isLoading }: N
                           <Plus className="h-4 w-4" />
                         </Button>
                         <span className="ml-2 text-muted-foreground">
-                          ${(menuItem.price * item.quantity).toFixed(2)}
+                          ₺{(menuItem.price * item.quantity).toFixed(2)}
                         </span>
                       </div>
 
