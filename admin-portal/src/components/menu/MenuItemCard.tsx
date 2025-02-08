@@ -311,14 +311,14 @@ export function MenuItemCard({ item, categories, onEdit, onDelete }: MenuItemCar
   }
 
   return (
-    <Card className="h-full flex flex-col overflow-hidden group relative bg-white hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/20">
-      <div className="relative aspect-square w-full overflow-hidden bg-gray-100">
+    <Card className="h-full flex flex-col overflow-hidden group relative hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/20">
+      <div className="relative aspect-square w-full overflow-hidden bg-muted">
         <div className="absolute top-2 right-2 z-10 flex gap-1">
           <Badge 
             variant={item.is_available ? "default" : "destructive"} 
             className={`${
               item.is_available 
-                ? 'bg-green-500/90 hover:bg-green-600 backdrop-blur-sm' 
+                ? 'bg-green-600/90 hover:bg-green-600 backdrop-blur-sm' 
                 : 'bg-red-500/90 hover:bg-red-600 backdrop-blur-sm'
             } shadow-sm`}
           >
@@ -332,7 +332,7 @@ export function MenuItemCard({ item, categories, onEdit, onDelete }: MenuItemCar
               <Badge 
                 key={flag.id} 
                 variant="secondary"
-                className="bg-white/80 backdrop-blur-sm shadow-sm"
+                className="bg-card/80 backdrop-blur-sm shadow-sm"
               >
                 {flag.name}
               </Badge>

@@ -392,7 +392,7 @@ export default function DashboardPage() {
             {stats.recentOrders.map((order) => (
               <div
                 key={order.id}
-                className="flex items-center justify-between p-4 bg-white rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+                className="flex items-center justify-between p-4 bg-card rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
                 onClick={() => setSelectedOrderId(order.id)}
               >
                 <div>
@@ -429,7 +429,7 @@ export default function DashboardPage() {
               <Link href="/menu" className="block">
                 <Button
                   variant="outline"
-                  className="w-full h-24 flex flex-col items-center justify-center bg-white hover:bg-muted/50"
+                  className="w-full h-24 flex flex-col items-center justify-center bg-card hover:bg-muted/50"
                 >
                   <MenuIcon className="h-6 w-6 mb-2" />
                   Update Menu
@@ -438,7 +438,7 @@ export default function DashboardPage() {
               <Link href="/tables" className="block">
                 <Button
                   variant="outline"
-                  className="w-full h-24 flex flex-col items-center justify-center bg-white hover:bg-muted/50"
+                  className="w-full h-24 flex flex-col items-center justify-center bg-card hover:bg-muted/50"
                 >
                   <Grid className="h-6 w-6 mb-2" />
                   Manage Tables
@@ -447,7 +447,7 @@ export default function DashboardPage() {
               <Link href="/orders" className="block">
                 <Button
                   variant="outline"
-                  className="w-full h-24 flex flex-col items-center justify-center bg-white hover:bg-muted/50"
+                  className="w-full h-24 flex flex-col items-center justify-center bg-card hover:bg-muted/50"
                 >
                   <Clock className="h-6 w-6 mb-2" />
                   View Orders
@@ -456,7 +456,7 @@ export default function DashboardPage() {
               <Link href="/settings" className="block">
                 <Button
                   variant="outline"
-                  className="w-full h-24 flex flex-col items-center justify-center bg-white hover:bg-muted/50"
+                  className="w-full h-24 flex flex-col items-center justify-center bg-card hover:bg-muted/50"
                 >
                   <Settings className="h-6 w-6 mb-2" />
                   Settings

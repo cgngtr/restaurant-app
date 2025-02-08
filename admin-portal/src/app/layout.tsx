@@ -9,6 +9,7 @@ import { Sidebar } from '@/components/layout/sidebar';
 import { QueryProvider } from '@/providers/query-provider';
 import { ParallelDataProvider } from '@/providers/parallel-data-provider';
 import { SessionProvider } from 'next-auth/react';
+import { ThemeProvider } from "@/providers/theme-provider";
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -23,26 +24,28 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className} suppressHydrationWarning>
-        <SessionProvider>
-          <Suspense fallback={<LoadingState />}>
-            <QueryProvider>
-              <ParallelDataProvider>
-                <div className="flex min-h-screen bg-gray-100">
-                  <Sidebar />
-                  <div className="flex-1 md:ml-64">
-                    <main className="p-8">
-                      <Suspense fallback={<LoadingState />}>
-                        {children}
-                      </Suspense>
-                    </main>
+      <body className={`${inter.className} bg-background`} suppressHydrationWarning>
+        <ThemeProvider>
+          <SessionProvider>
+            <Suspense fallback={<LoadingState />}>
+              <QueryProvider>
+                <ParallelDataProvider>
+                  <div className="flex min-h-screen bg-background">
+                    <Sidebar />
+                    <div className="flex-1 md:ml-64">
+                      <main className="p-8 bg-background">
+                        <Suspense fallback={<LoadingState />}>
+                          {children}
+                        </Suspense>
+                      </main>
+                    </div>
                   </div>
-                </div>
-              </ParallelDataProvider>
-            </QueryProvider>
-          </Suspense>
-          <Toaster />
-        </SessionProvider>
+                </ParallelDataProvider>
+              </QueryProvider>
+            </Suspense>
+            <Toaster />
+          </SessionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
