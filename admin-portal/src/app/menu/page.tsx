@@ -31,7 +31,8 @@ type MenuCategory = Database['public']['Tables']['menu_categories']['Row']
 
 interface CustomizationOption {
   name: string;
-  price: number;
+  price_adjustment: number;
+  is_default: boolean;
 }
 
 interface CustomizationOptions {
@@ -46,8 +47,7 @@ interface CustomizationOptions {
 interface CustomizationGroup {
   id: string;
   name: string;
-  type: 'burger' | 'coffee' | null;
-  options: Record<string, number>;
+  customization_options: CustomizationOption[];
 }
 
 interface MenuItemCustomization {
@@ -105,8 +105,12 @@ export default function MenuPage() {
             customization_groups (
               id,
               name,
-              type,
-              options
+              customization_options (
+                id,
+                name,
+                price_adjustment,
+                is_default
+              )
             )
           ),
           menu_item_dietary_flags (
@@ -135,23 +139,34 @@ export default function MenuPage() {
         // Customization options
         item.menu_item_customizations?.forEach((curr: MenuItemCustomization) => {
           const group = curr.customization_groups
-          if (group && group.type) {
-            customOptions.type = group.type
-            switch (group.type) {
-              case 'burger':
-              case 'coffee':
-                if (group.options) {
-                  if (group.name.toLowerCase().includes('extra')) {
-                    customOptions.extras = { ...customOptions.extras, ...group.options }
-                  } else if (group.name.toLowerCase().includes('side')) {
-                    customOptions.sides = { ...customOptions.sides, ...group.options }
-                  } else if (group.name.toLowerCase().includes('size')) {
-                    customOptions.sizes = { ...customOptions.sizes, ...group.options }
-                  } else if (group.name.toLowerCase().includes('milk')) {
-                    customOptions.milk_options = { ...customOptions.milk_options, ...group.options }
-                  }
-                }
-                break
+          if (group) {
+            // Grup tipini isimden çıkaralım
+            const groupName = group.name.toLowerCase()
+            let type: 'burger' | 'coffee' | null = null
+
+            if (groupName.includes('burger')) {
+              type = 'burger'
+            } else if (groupName.includes('coffee')) {
+              type = 'coffee'
+            }
+
+            customOptions.type = type
+
+            if (type) {
+              const options = group.customization_options?.reduce((acc, opt) => {
+                acc[opt.name] = opt.price_adjustment
+                return acc
+              }, {} as Record<string, number>) || {}
+
+              if (groupName.includes('extra')) {
+                customOptions.extras = { ...customOptions.extras, ...options }
+              } else if (groupName.includes('side')) {
+                customOptions.sides = { ...customOptions.sides, ...options }
+              } else if (groupName.includes('size')) {
+                customOptions.sizes = { ...customOptions.sizes, ...options }
+              } else if (groupName.includes('milk')) {
+                customOptions.milk_options = { ...customOptions.milk_options, ...options }
+              }
             }
           }
         })
@@ -409,15 +424,16 @@ export default function MenuPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {filteredItems.map((item) => (
-          <MenuItemCard
-            key={item.id}
-            item={item}
-            categories={categories}
-            onEdit={(updates) => handleUpdateItem(item.id, updates)}
-            onDelete={() => handleDeleteItem(item.id)}
-          />
+          <div key={item.id} className="aspect-square">
+            <MenuItemCard
+              item={item}
+              categories={categories}
+              onEdit={(updates) => handleUpdateItem(item.id, updates)}
+              onDelete={() => handleDeleteItem(item.id)}
+            />
+          </div>
         ))}
       </div>
     </div>

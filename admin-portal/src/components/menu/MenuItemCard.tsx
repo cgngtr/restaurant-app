@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { toast } from '@/components/ui/use-toast'
-import { Edit, X, Trash, Loader2 } from 'lucide-react'
+import { Edit, X, Trash, Loader2, Pencil, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import {
   Dialog,
@@ -29,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
 
 interface CustomizationOptions {
   type: 'burger' | 'coffee' | null;
@@ -77,7 +78,7 @@ interface MenuItemCardProps {
   item: MenuItem
   categories: MenuCategory[]
   onEdit: (updates: Partial<MenuItem>) => Promise<void>
-  onDelete: () => Promise<void>
+  onDelete: (id: string) => Promise<void>
 }
 
 // Add compression options
@@ -310,481 +311,232 @@ export function MenuItemCard({ item, categories, onEdit, onDelete }: MenuItemCar
   }
 
   return (
-    <Card className="overflow-hidden">
-      <div className="relative h-48">
-        {item.image_url ? (
-          <Image
-            src={item.image_url}
-            alt={item.name}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            priority={false}
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = DEFAULT_PLACEHOLDER_IMAGE;
-            }}
-          />
-        ) : (
-          <div className="w-full h-full bg-secondary/10 flex flex-col items-center justify-center">
-            <div className="text-4xl text-muted-foreground mb-2">🍽️</div>
-            <span className="text-sm text-muted-foreground">No image</span>
-          </div>
-        )}
-      </div>
-      
-      <div className="p-4">
-        <div className="flex justify-between items-start mb-2">
-          <div>
-            <h3 className="font-semibold text-lg">{item.name}</h3>
-            <p className="text-sm text-gray-500">
-              {categories.find(cat => cat.id === item.category_id)?.name}
-            </p>
-          </div>
-          <p className="font-medium">{formatCurrency(item.price)}</p>
+    <Card className="h-full flex flex-col overflow-hidden group relative bg-white hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/20">
+      <div className="relative aspect-square w-full overflow-hidden bg-gray-100">
+        <div className="absolute top-2 right-2 z-10 flex gap-1">
+          <Badge 
+            variant={item.is_available ? "default" : "destructive"} 
+            className={`${
+              item.is_available 
+                ? 'bg-green-500/90 hover:bg-green-600 backdrop-blur-sm' 
+                : 'bg-red-500/90 hover:bg-red-600 backdrop-blur-sm'
+            } shadow-sm`}
+          >
+            {item.is_available ? "Available" : "Unavailable"}
+          </Badge>
         </div>
         
-        <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-          {item.description}
-        </p>
+        {item.dietary_flags && item.dietary_flags.length > 0 && (
+          <div className="absolute top-2 left-2 z-10 flex gap-1">
+            {item.dietary_flags.map((flag) => (
+              <Badge 
+                key={flag.id} 
+                variant="secondary"
+                className="bg-white/80 backdrop-blur-sm shadow-sm"
+              >
+                {flag.name}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        <Image
+          src={item.image_url || '/placeholder-food.jpg'}
+          alt={item.name}
+          fill
+          className="object-cover transition-transform duration-500 group-hover:scale-110"
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+        />
         
-        <div className="flex justify-between items-center">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      </div>
+
+      <CardContent className="flex-1 p-4">
+        <div className="space-y-2 min-h-[120px] flex flex-col">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="font-semibold text-lg leading-tight line-clamp-1">
+              {item.name}
+            </h3>
+            <span className="text-lg font-bold text-primary whitespace-nowrap">
+              ${item.price.toFixed(2)}
+            </span>
+          </div>
+
+          <p className="text-sm text-muted-foreground line-clamp-2 flex-1">
+            {item.description}
+          </p>
+
+          <div className="h-6">
+            {item.customization_options?.type && (
+              <Badge variant="outline" className="text-xs">
+                {item.customization_options.type === 'burger' ? '🍔 Customizable' : '☕ Customizable'}
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t">
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => setIsEditDialogOpen(true)}
+            className="h-8 hover:bg-primary/5 hover:text-primary transition-colors"
           >
-            <Edit className="h-4 w-4 mr-2" />
+            <Pencil className="h-4 w-4 mr-1" />
             Edit
           </Button>
           <Button
-            variant="destructive"
+            variant="ghost"
             size="sm"
-            onClick={onDelete}
+            onClick={() => onDelete(item.id)}
+            className="h-8 hover:bg-red-50 text-red-500 hover:text-red-600 transition-colors"
           >
-            <Trash className="h-4 w-4 mr-2" />
+            <Trash2 className="h-4 w-4 mr-1" />
             Delete
           </Button>
         </div>
-      </div>
+      </CardContent>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Edit Menu Item</DialogTitle>
+            <DialogTitle className="text-xl font-semibold">Edit Menu Item</DialogTitle>
           </DialogHeader>
           
-          <Tabs defaultValue="basic">
-            <TabsList>
-              <TabsTrigger value="basic">Basic Info</TabsTrigger>
-              <TabsTrigger value="customization">Customization</TabsTrigger>
-            </TabsList>
+          <div className="grid gap-6 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-sm font-medium">Item Name</Label>
+                <Input
+                  id="name"
+                  value={editedItem.name}
+                  onChange={(e) => setEditedItem({ ...editedItem, name: e.target.value })}
+                  className="h-9"
+                  placeholder="Enter item name"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="price" className="text-sm font-medium">Price ($)</Label>
+                <Input
+                  id="price"
+                  type="number"
+                  step="0.01"
+                  value={editedItem.price}
+                  onChange={(e) => setEditedItem({ ...editedItem, price: parseFloat(e.target.value) })}
+                  className="h-9"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
 
-            <TabsContent value="basic">
-              <div className="space-y-4">
-                <div>
-                  <Label>Name</Label>
+            <div className="space-y-2">
+              <Label htmlFor="description" className="text-sm font-medium">Description</Label>
+              <Input
+                id="description"
+                value={editedItem.description}
+                onChange={(e) => setEditedItem({ ...editedItem, description: e.target.value })}
+                className="h-9"
+                placeholder="Enter item description"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="category" className="text-sm font-medium">Category</Label>
+                <Select
+                  value={editedItem.category_id}
+                  onValueChange={(value) => setEditedItem({ ...editedItem, category_id: value })}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="type" className="text-sm font-medium">Item Type</Label>
+                <Select
+                  value={customizationOptions.type || "none"}
+                  onValueChange={(value: string) => handleTypeChange(value as 'burger' | 'coffee' | null)}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="burger">Burger</SelectItem>
+                    <SelectItem value="coffee">Coffee</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 bg-secondary/30 p-3 rounded-lg">
+              <div className="flex-1">
+                <Label htmlFor="availability" className="text-sm font-medium">Availability Status</Label>
+                <p className="text-sm text-muted-foreground">Toggle whether this item is available for order</p>
+              </div>
+              <Switch
+                id="availability"
+                checked={editedItem.is_available}
+                onCheckedChange={(checked) => setEditedItem({ ...editedItem, is_available: checked })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Item Image</Label>
+              <div className="flex items-center gap-4">
+                <div className="relative h-20 w-20 rounded-lg overflow-hidden bg-gray-100">
+                  <Image
+                    src={editedItem.image_url || '/placeholder-food.jpg'}
+                    alt={editedItem.name}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+                <div className="space-y-2">
                   <Input
-                    value={editedItem.name}
-                    onChange={(e) => setEditedItem({ ...editedItem, name: e.target.value })}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="text-sm"
                   />
-                </div>
-                <div>
-                  <Label>Description</Label>
-                  <Input
-                    value={editedItem.description || ''}
-                    onChange={(e) => setEditedItem({ ...editedItem, description: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label>Price</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={editedItem.price}
-                    onChange={(e) => setEditedItem({ ...editedItem, price: parseFloat(e.target.value) })}
-                  />
-                </div>
-                <div>
-                  <Label>Category</Label>
-                  <Select
-                    value={editedItem.category_id}
-                    onValueChange={(value) => setEditedItem({ ...editedItem, category_id: value })}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Image</Label>
-                  <div className="mt-2 flex items-center gap-4">
-                    {editedItem.image_url && (
-                      <div className="relative h-20 w-20 rounded-md overflow-hidden">
-                        <Image
-                          src={editedItem.image_url || DEFAULT_PLACEHOLDER_IMAGE}
-                          alt={editedItem.name}
-                          fill
-                          className="object-cover"
-                          sizes="80px"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = DEFAULT_PLACEHOLDER_IMAGE;
-                          }}
-                        />
-                      </div>
-                    )}
-                    <label className={`cursor-pointer ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
-                      <div className="px-4 py-2 bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-md transition-colors flex items-center gap-2">
-                        {isUploading ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Uploading...
-                          </>
-                        ) : (
-                          'Choose Image'
-                        )}
-                      </div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleImageUpload}
-                        disabled={isUploading}
-                      />
-                    </label>
-                    {editedItem.image_url && !isUploading && (
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        onClick={handleImageRemove}
-                      >
-                        Remove
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={editedItem.is_available}
-                    onCheckedChange={(checked) => setEditedItem({ ...editedItem, is_available: checked })}
-                  />
-                  <Label>Available</Label>
+                  {editedItem.image_url && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleImageRemove}
+                      className="h-8 text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Remove Image
+                    </Button>
+                  )}
                 </div>
               </div>
-            </TabsContent>
+            </div>
+          </div>
 
-            <TabsContent value="customization">
-              <div className="space-y-6">
-                <div className="space-y-4">
-                  <Label>Item Type</Label>
-                  <div className="flex gap-4">
-                    <Button
-                      variant={customizationOptions.type === 'burger' ? 'default' : 'outline'}
-                      onClick={() => handleTypeChange('burger')}
-                    >
-                      Burger
-                    </Button>
-                    <Button
-                      variant={customizationOptions.type === 'coffee' ? 'default' : 'outline'}
-                      onClick={() => handleTypeChange('coffee')}
-                    >
-                      Coffee
-                    </Button>
-                    <Button
-                      variant={customizationOptions.type === null ? 'default' : 'outline'}
-                      onClick={() => handleTypeChange(null)}
-                    >
-                      None
-                    </Button>
-                  </div>
-                </div>
-
-                {customizationOptions.type === 'burger' && (
-                  <>
-                    <div className="space-y-4">
-                      <Label>Extras</Label>
-                      <div className="grid gap-4">
-                        {Object.entries(customizationOptions.extras).map(([name, price]) => (
-                          <div key={name} className="flex items-center gap-4">
-                            <Input
-                              value={name}
-                              onChange={(e) => {
-                                const newExtras = { ...customizationOptions.extras }
-                                delete newExtras[name]
-                                newExtras[e.target.value] = price
-                                setCustomizationOptions({
-                                  ...customizationOptions,
-                                  extras: newExtras
-                                })
-                              }}
-                              placeholder="Extra name"
-                            />
-                            <Input
-                              type="number"
-                              value={price.toString()}
-                              onChange={(e) => {
-                                setCustomizationOptions({
-                                  ...customizationOptions,
-                                  extras: {
-                                    ...customizationOptions.extras,
-                                    [name]: parseFloat(e.target.value)
-                                  }
-                                })
-                              }}
-                              placeholder="Price"
-                              className="w-24"
-                            />
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              onClick={() => {
-                                const newExtras = { ...customizationOptions.extras }
-                                delete newExtras[name]
-                                setCustomizationOptions({
-                                  ...customizationOptions,
-                                  extras: newExtras
-                                })
-                              }}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setCustomizationOptions({
-                              ...customizationOptions,
-                              extras: {
-                                ...customizationOptions.extras,
-                                'New Extra': 0
-                              }
-                            })
-                          }}
-                        >
-                          Add Extra
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <Label>Sides</Label>
-                      <div className="grid gap-4">
-                        {Object.entries(customizationOptions.sides).map(([name, price]) => (
-                          <div key={name} className="flex items-center gap-4">
-                            <Input
-                              value={name}
-                              onChange={(e) => {
-                                const newSides = { ...customizationOptions.sides }
-                                delete newSides[name]
-                                newSides[e.target.value] = price
-                                setCustomizationOptions({
-                                  ...customizationOptions,
-                                  sides: newSides
-                                })
-                              }}
-                              placeholder="Side name"
-                            />
-                            <Input
-                              type="number"
-                              value={price.toString()}
-                              onChange={(e) => {
-                                setCustomizationOptions({
-                                  ...customizationOptions,
-                                  sides: {
-                                    ...customizationOptions.sides,
-                                    [name]: parseFloat(e.target.value)
-                                  }
-                                })
-                              }}
-                              placeholder="Price"
-                              className="w-24"
-                            />
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              onClick={() => {
-                                const newSides = { ...customizationOptions.sides }
-                                delete newSides[name]
-                                setCustomizationOptions({
-                                  ...customizationOptions,
-                                  sides: newSides
-                                })
-                              }}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setCustomizationOptions({
-                              ...customizationOptions,
-                              sides: {
-                                ...customizationOptions.sides,
-                                'New Side': 0
-                              }
-                            })
-                          }}
-                        >
-                          Add Side
-                        </Button>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {customizationOptions.type === 'coffee' && (
-                  <>
-                    <div className="space-y-4">
-                      <Label>Sizes</Label>
-                      <div className="grid gap-4">
-                        {Object.entries(customizationOptions.sizes).map(([name, price]) => (
-                          <div key={name} className="flex items-center gap-4">
-                            <Input
-                              value={name}
-                              onChange={(e) => {
-                                const newSizes = { ...customizationOptions.sizes }
-                                delete newSizes[name]
-                                newSizes[e.target.value] = price
-                                setCustomizationOptions({
-                                  ...customizationOptions,
-                                  sizes: newSizes
-                                })
-                              }}
-                              placeholder="Size name"
-                            />
-                            <Input
-                              type="number"
-                              value={price.toString()}
-                              onChange={(e) => {
-                                setCustomizationOptions({
-                                  ...customizationOptions,
-                                  sizes: {
-                                    ...customizationOptions.sizes,
-                                    [name]: parseFloat(e.target.value)
-                                  }
-                                })
-                              }}
-                              placeholder="Price"
-                              className="w-24"
-                            />
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              onClick={() => {
-                                const newSizes = { ...customizationOptions.sizes }
-                                delete newSizes[name]
-                                setCustomizationOptions({
-                                  ...customizationOptions,
-                                  sizes: newSizes
-                                })
-                              }}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setCustomizationOptions({
-                              ...customizationOptions,
-                              sizes: {
-                                ...customizationOptions.sizes,
-                                'New Size': 0
-                              }
-                            })
-                          }}
-                        >
-                          Add Size
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <Label>Milk Options</Label>
-                      <div className="grid gap-4">
-                        {Object.entries(customizationOptions.milk_options).map(([name, price]) => (
-                          <div key={name} className="flex items-center gap-4">
-                            <Input
-                              value={name}
-                              onChange={(e) => {
-                                const newMilkOptions = { ...customizationOptions.milk_options }
-                                delete newMilkOptions[name]
-                                newMilkOptions[e.target.value] = price
-                                setCustomizationOptions({
-                                  ...customizationOptions,
-                                  milk_options: newMilkOptions
-                                })
-                              }}
-                              placeholder="Milk option name"
-                            />
-                            <Input
-                              type="number"
-                              value={price.toString()}
-                              onChange={(e) => {
-                                setCustomizationOptions({
-                                  ...customizationOptions,
-                                  milk_options: {
-                                    ...customizationOptions.milk_options,
-                                    [name]: parseFloat(e.target.value)
-                                  }
-                                })
-                              }}
-                              placeholder="Price"
-                              className="w-24"
-                            />
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              onClick={() => {
-                                const newMilkOptions = { ...customizationOptions.milk_options }
-                                delete newMilkOptions[name]
-                                setCustomizationOptions({
-                                  ...customizationOptions,
-                                  milk_options: newMilkOptions
-                                })
-                              }}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setCustomizationOptions({
-                              ...customizationOptions,
-                              milk_options: {
-                                ...customizationOptions.milk_options,
-                                'New Milk Option': 0
-                              }
-                            })
-                          }}
-                        >
-                          Add Milk Option
-                        </Button>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </TabsContent>
-          </Tabs>
-
-          <DialogFooter>
-            <Button onClick={handleSave} className="w-full">
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+              className="h-9"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSave}
+              className="h-9 px-8"
+            >
               Save Changes
             </Button>
           </DialogFooter>
