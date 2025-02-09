@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
 import Link from 'next/link';
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -22,24 +22,39 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      // 1. Create auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
       });
 
-      if (error) throw error;
+      if (authError) throw authError;
+
+      // 2. Insert into profiles table
+      if (authData.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([
+            {
+              id: authData.user.id,
+              email: formData.email,
+              role: 'restaurant_owner',
+            },
+          ]);
+
+        if (profileError) throw profileError;
+      }
 
       toast({
         title: 'Success!',
-        description: 'You have been logged in successfully.',
+        description: 'Your account has been created. Please check your email for verification.',
       });
 
-      router.push('/dashboard');
-      router.refresh();
+      router.push('/auth/login');
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to sign in',
+        description: error.message || 'Something went wrong',
         variant: 'destructive',
       });
     } finally {
@@ -50,7 +65,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-lg">
-        <h1 className="text-2xl font-bold text-center mb-8">Sign in to your account</h1>
+        <h1 className="text-2xl font-bold text-center mb-8">Create your account</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
@@ -66,7 +81,7 @@ export default function LoginPage() {
               placeholder="restaurant@example.com"
             />
           </div>
-
+          
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700">
               Password
@@ -79,6 +94,7 @@ export default function LoginPage() {
               required
               className="mt-1"
               placeholder="••••••••"
+              minLength={6}
             />
           </div>
 
@@ -87,13 +103,13 @@ export default function LoginPage() {
             className="w-full"
             disabled={isLoading}
           >
-            {isLoading ? 'Signing in...' : 'Sign in'}
+            {isLoading ? 'Creating account...' : 'Create Account'}
           </Button>
 
           <p className="text-center text-sm text-gray-600 mt-4">
-            Don't have an account?{' '}
-            <Link href="/auth/register" className="text-blue-600 hover:underline">
-              Create one
+            Already have an account?{' '}
+            <Link href="/auth/login" className="text-blue-600 hover:underline">
+              Sign in
             </Link>
           </p>
         </form>
