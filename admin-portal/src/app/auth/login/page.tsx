@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,20 @@ export default function LoginPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClientComponentClient();
+
+  useEffect(() => {
+    const error = searchParams.get('error');
+    if (error) {
+      toast({
+        title: 'Authentication Required',
+        description: error,
+        variant: 'destructive',
+        duration: 5000,
+      });
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,17 +43,21 @@ export default function LoginPage() {
       if (error) throw error;
 
       toast({
-        title: 'Success!',
-        description: 'You have been logged in successfully.',
+        title: 'Welcome back! 👋',
+        description: 'Successfully signed in to your account.',
+        duration: 3000,
       });
 
-      router.push('/dashboard');
+      // Redirect to the original requested URL or dashboard
+      const redirectTo = searchParams.get('redirectTo') || '/dashboard';
+      router.push(redirectTo);
       router.refresh();
     } catch (error: any) {
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to sign in',
+        title: 'Sign in failed',
+        description: error.message || 'Please check your credentials and try again.',
         variant: 'destructive',
+        duration: 5000,
       });
     } finally {
       setIsLoading(false);
