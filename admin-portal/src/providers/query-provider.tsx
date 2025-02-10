@@ -1,8 +1,7 @@
 'use client'
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 
 const queryClientOptions = {
   defaultOptions: {
@@ -20,15 +19,9 @@ const queryClientOptions = {
 export function QueryProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient(queryClientOptions))
 
-  const devTools = useMemo(() => {
-    if (process.env.NODE_ENV === 'production') return null
-    return <ReactQueryDevtools initialIsOpen={false} />
-  }, [])
-
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      {devTools}
     </QueryClientProvider>
   )
 } 
