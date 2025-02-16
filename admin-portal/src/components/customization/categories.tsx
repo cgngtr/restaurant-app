@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { useRestaurantId } from "@/hooks/use-restaurant-id";
+import { useRestaurant } from "@/providers/restaurant-provider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 
@@ -28,21 +28,22 @@ interface Category {
 
 export function Categories() {
   const { toast } = useToast();
-  const restaurantId = useRestaurantId();
+  const { restaurant, loading: restaurantLoading } = useRestaurant();
+  const restaurantId = restaurant?.id;
   const queryClient = useQueryClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
   // Kategorileri çek
-  const { data: categories, isLoading, error } = useQuery({
+  const { data: categories, isLoading: categoriesLoading, error } = useQuery({
     queryKey: ['menu-categories', restaurantId],
     queryFn: async () => {
       if (!restaurantId) {
-        console.log('No restaurant ID available');
+        console.log('[DEBUG] Categories: No restaurant ID available');
         return [];
       }
 
-      console.log('Fetching categories for restaurant:', restaurantId);
+      console.log('[DEBUG] Categories: Fetching for restaurant:', restaurantId);
       
       const { data, error } = await supabase
         .from('menu_categories')
@@ -51,9 +52,11 @@ export function Categories() {
         .order('sort_order');
       
       if (error) {
-        console.error('Error fetching categories:', error);
+        console.error('[DEBUG] Categories: Error fetching:', error);
         throw error;
       }
+
+      console.log('[DEBUG] Categories: Fetch result:', { data, error });
 
       if (!data || data.length === 0) {
         // Eğer hiç kategori yoksa, varsayılan kategorileri oluştur
@@ -82,7 +85,7 @@ export function Categories() {
 
       return data;
     },
-    enabled: !!restaurantId
+    enabled: !!restaurantId && !restaurantLoading
   });
 
   // Kategori ekleme mutation'ı
@@ -194,8 +197,20 @@ export function Categories() {
     });
   };
 
-  if (isLoading) {
-    return <LoadingSpinner />;
+  if (restaurantLoading || categoriesLoading) {
+    return (
+      <div className="flex items-center justify-center h-[400px]">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (!restaurantId) {
+    return (
+      <div className="flex items-center justify-center h-[400px]">
+        <p className="text-gray-500">Restaurant not found</p>
+      </div>
+    );
   }
 
   return (

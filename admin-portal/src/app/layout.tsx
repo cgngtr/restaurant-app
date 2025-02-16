@@ -1,52 +1,44 @@
-'use client'
+import { Inter } from 'next/font/google'
+import './globals.css'
+import { headers } from 'next/headers'
+import ClientLayout from '@/components/layout/client-layout'
+import Script from 'next/script'
 
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { Toaster } from '@/components/ui/toaster';
-import { Suspense } from 'react';
-import { LoadingState } from '@/components/ui/loading-state';
-import { Sidebar } from '@/components/layout/sidebar';
-import { QueryProvider } from '@/providers/query-provider';
-import { ParallelDataProvider } from '@/providers/parallel-data-provider';
-import { SessionProvider } from 'next-auth/react';
-import { ThemeProvider } from "@/providers/theme-provider";
+const inter = Inter({ subsets: ['latin'] })
 
-const inter = Inter({ 
-  subsets: ['latin'],
-  display: 'swap',
-  preload: true
-});
-
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const headersList = await headers()
+  const pathname = headersList.get('x-pathname') || '/'
+  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register')
+
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} bg-background`} suppressHydrationWarning>
-        <ThemeProvider>
-          <SessionProvider>
-            <Suspense fallback={<LoadingState />}>
-              <QueryProvider>
-                <ParallelDataProvider>
-                  <div className="flex min-h-screen bg-background">
-                    <Sidebar />
-                    <div className="flex-1 md:ml-64">
-                      <main className="p-8 bg-background">
-                        <Suspense fallback={<LoadingState />}>
-                          {children}
-                        </Suspense>
-                      </main>
-                    </div>
-                  </div>
-                </ParallelDataProvider>
-              </QueryProvider>
-            </Suspense>
-            <Toaster />
-          </SessionProvider>
-        </ThemeProvider>
+      <head>
+        <title>QR Order Admin</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <Script id="hydration-handler">
+          {`
+            // Browser extension class'larını temizle
+            window.addEventListener('load', function() {
+              const body = document.body;
+              const originalClasses = body.className.split(' ').filter(cls => 
+                !cls.includes('vsc-') && 
+                !cls.includes('volumecontrol-')
+              );
+              body.className = originalClasses.join(' ');
+            });
+          `}
+        </Script>
+      </head>
+      <body className={inter.className} suppressHydrationWarning>
+        <ClientLayout isAuthPage={isAuthPage}>
+          {children}
+        </ClientLayout>
       </body>
     </html>
-  );
+  )
 }

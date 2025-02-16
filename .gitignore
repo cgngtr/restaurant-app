@@ -1,2 +1,4 @@
-admin-portal/src/app/menu/menu_items
-
+admin-portal/src/app/menu/menu_items/
+.cursorrules/
+**/.cursorrules
+.cursorrules

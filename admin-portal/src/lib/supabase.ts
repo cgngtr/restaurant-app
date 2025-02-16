@@ -1,16 +1,16 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Database } from '@/types/supabase'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+let supabaseClient: ReturnType<typeof createClientComponentClient<Database>> | null = null;
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-  global: {
-    headers: {
-      'X-Client-Info': 'admin-portal',
-    },
-  },
-})
+export const getSupabaseClient = () => {
+  if (!supabaseClient) {
+    supabaseClient = createClientComponentClient<Database>();
+  }
+  return supabaseClient;
+};
+
+export const supabase = getSupabaseClient();
 
 export const subscribeToOrders = (
   restaurantId: string,

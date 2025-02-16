@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useRestaurant } from "@/providers/restaurant-provider";
 
 interface DietaryFlag {
   id: string;
@@ -30,6 +31,40 @@ interface DietaryFlag {
   description: string;
   icon_url: string;
 }
+
+interface DietaryFlagInput {
+  name: string;
+  description: string;
+  icon_url: string;
+}
+
+const defaultFlags: DietaryFlagInput[] = [
+  { 
+    name: 'Vegetarian',
+    description: 'Options without meat',
+    icon_url: 'https://api.iconify.design/material-symbols:eco.svg?color=%2322c55e'
+  },
+  { 
+    name: 'Vegan',
+    description: 'Contains no animal products',
+    icon_url: 'https://api.iconify.design/mdi:sprout.svg?color=%2322c55e'
+  },
+  { 
+    name: 'Gluten Free',
+    description: 'Options without gluten',
+    icon_url: 'https://api.iconify.design/fluent:food-grains-24-regular.svg?color=%23b91c1c'
+  },
+  {
+    name: 'Nut Free',
+    description: 'No nuts or tree nuts',
+    icon_url: 'https://api.iconify.design/game-icons:peanut.svg?color=%23854d0e'
+  },
+  {
+    name: 'Dairy Free',
+    description: 'Contains no dairy products',
+    icon_url: 'https://api.iconify.design/mdi:cow-off.svg?color=%23854d0e'
+  }
+];
 
 interface MenuItem {
   id: string;
@@ -44,7 +79,8 @@ interface MenuCategory {
 
 export function DietaryOptions() {
   const { toast } = useToast();
-  const restaurantId = useRestaurantId();
+  const { restaurant, loading: restaurantLoading } = useRestaurant();
+  const restaurantId = restaurant?.id;
   const queryClient = useQueryClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingFlag, setEditingFlag] = useState<DietaryFlag | null>(null);
@@ -53,45 +89,16 @@ export function DietaryOptions() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   // Dietary flags'leri çek
-  const { data: flags, isLoading } = useQuery({
+  const { data: flags, isLoading: flagsLoading } = useQuery({
     queryKey: ['dietary-flags', restaurantId],
     queryFn: async () => {
       if (!restaurantId) {
-        console.log('No restaurant ID available');
-        return [];
+        console.log('[DEBUG] DietaryOptions: No restaurant ID available');
+        throw new Error('Restaurant ID is required');
       }
 
-      console.log('Fetching dietary flags for restaurant:', restaurantId);
-      
-      // Varsayılan bayrakları tanımla
-      const defaultFlags = [
-        { 
-          name: 'Vegetarian',
-          description: 'Options without meat',
-          icon_url: 'https://api.iconify.design/material-symbols:eco.svg?color=%2322c55e'
-        },
-        { 
-          name: 'Vegan',
-          description: 'Contains no animal products',
-          icon_url: 'https://api.iconify.design/mdi:sprout.svg?color=%2322c55e'
-        },
-        { 
-          name: 'Gluten Free',
-          description: 'Options without gluten',
-          icon_url: 'https://api.iconify.design/fluent:food-grains-24-regular.svg?color=%23b91c1c'
-        },
-        {
-          name: 'Nut Free',
-          description: 'No nuts or tree nuts',
-          icon_url: 'https://api.iconify.design/game-icons:peanut.svg?color=%23854d0e'
-        },
-        {
-          name: 'Dairy Free',
-          description: 'Contains no dairy products',
-          icon_url: 'https://api.iconify.design/mdi:cow-off.svg?color=%23854d0e'
-        }
-      ];
-      
+      console.log('[DEBUG] DietaryOptions: Fetching flags for restaurant:', restaurantId);
+
       const { data, error } = await supabase
         .from('dietary_flags')
         .select('*')
@@ -99,9 +106,11 @@ export function DietaryOptions() {
         .order('name');
       
       if (error) {
-        console.error('Error fetching dietary flags:', error);
+        console.error('[DEBUG] DietaryOptions: Error fetching flags:', error);
         throw error;
       }
+
+      console.log('[DEBUG] DietaryOptions: Fetch result:', { data, error });
 
       if (!data || data.length === 0) {
         // Hiç veri yoksa varsayılanları ekle
@@ -123,7 +132,9 @@ export function DietaryOptions() {
 
       return data;
     },
-    enabled: !!restaurantId
+    enabled: !!restaurantId && !restaurantLoading,
+    retry: 3,
+    retryDelay: 1000,
   });
 
   // Fetch menu categories and items
@@ -317,8 +328,20 @@ export function DietaryOptions() {
     });
   };
 
-  if (isLoading) {
-    return <LoadingSpinner />;
+  if (restaurantLoading || flagsLoading) {
+    return (
+      <div className="flex items-center justify-center h-[400px]">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (!restaurantId) {
+    return (
+      <div className="flex items-center justify-center h-[400px]">
+        <p className="text-gray-500">Restaurant not found</p>
+      </div>
+    );
   }
 
   return (

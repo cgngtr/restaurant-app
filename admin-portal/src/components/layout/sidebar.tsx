@@ -11,10 +11,13 @@ import {
   Table2,
   ClipboardList,
   Settings,
-  Sliders
+  Sliders,
+  LogOut
 } from 'lucide-react'
 import { useRoutePrefetch } from '@/hooks/use-route-prefetch'
 import { useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { useRestaurant } from '@/providers/restaurant-provider'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -45,6 +48,8 @@ function NavLink({ href, children, isActive }: { href: string; children: React.R
 export function Sidebar() {
   const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const { logout } = useRestaurant()
   
   // Enable route prefetching
   useRoutePrefetch()
@@ -52,6 +57,17 @@ export function Sidebar() {
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return
+    
+    try {
+      setIsLoggingOut(true)
+      await logout()
+    } finally {
+      setIsLoggingOut(false)
+    }
+  }
 
   if (!mounted) {
     return null
@@ -85,8 +101,19 @@ export function Sidebar() {
             )
           })}
         </ul>
-        <div className="border-t p-4 flex justify-center">
-          <ThemeToggle />
+        <div className="border-t p-4 space-y-4">
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start gap-3 text-muted-foreground hover:text-accent-foreground"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+          >
+            <LogOut className="h-5 w-5 shrink-0" />
+            {isLoggingOut ? 'Çıkış yapılıyor...' : 'Çıkış Yap'}
+          </Button>
+          <div className="flex justify-center">
+            <ThemeToggle />
+          </div>
         </div>
       </nav>
     </div>
