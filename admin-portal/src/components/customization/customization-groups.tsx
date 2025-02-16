@@ -247,7 +247,7 @@ export function CustomizationGroups() {
         const { data } = await supabase
           .from('menu_item_customizations')
           .select('menu_item_id')
-          .eq('group_id', editingGroup.id);
+          .eq('customization_group_id', editingGroup.id);
         
         if (data) {
           setSelectedProducts(data.map(item => item.menu_item_id));

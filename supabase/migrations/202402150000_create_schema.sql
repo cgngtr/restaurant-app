@@ -51,6 +51,18 @@ CREATE TABLE IF NOT EXISTS menu_categories (
     category_type VARCHAR(50)
 );
 
+CREATE TABLE IF NOT EXISTS customization_groups (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    restaurant_id UUID REFERENCES restaurants(id) ON DELETE CASCADE,
+    type_id UUID,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    is_required BOOLEAN DEFAULT false,
+    min_selections INTEGER DEFAULT 0,
+    max_selections INTEGER,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS menu_items (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     restaurant_id UUID REFERENCES restaurants(id) ON DELETE CASCADE,
@@ -62,6 +74,15 @@ CREATE TABLE IF NOT EXISTS menu_items (
     is_available BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     customization_options JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE TABLE IF NOT EXISTS menu_item_customizations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    menu_item_id UUID NOT NULL REFERENCES menu_items(id) ON DELETE CASCADE,
+    customization_group_id UUID NOT NULL REFERENCES customization_groups(id) ON DELETE CASCADE,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(menu_item_id, customization_group_id)
 );
 
 CREATE TABLE IF NOT EXISTS orders (
@@ -87,18 +108,6 @@ CREATE TABLE IF NOT EXISTS order_items (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS customization_groups (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    restaurant_id UUID REFERENCES restaurants(id) ON DELETE CASCADE,
-    type_id UUID,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    is_required BOOLEAN DEFAULT false,
-    min_selections INTEGER DEFAULT 0,
-    max_selections INTEGER,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
 CREATE TABLE IF NOT EXISTS customization_options (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     group_id UUID REFERENCES customization_groups(id) ON DELETE CASCADE,
@@ -117,6 +126,14 @@ CREATE TABLE IF NOT EXISTS dietary_flags (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS menu_item_dietary_flags (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    menu_item_id UUID NOT NULL REFERENCES menu_items(id) ON DELETE CASCADE,
+    flag_id UUID NOT NULL REFERENCES dietary_flags(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(menu_item_id, flag_id)
+);
+
 -- Create indexes for better query performance
 CREATE INDEX idx_restaurant_staff_profile ON restaurant_staff(profile_id);
 CREATE INDEX idx_restaurant_staff_restaurant ON restaurant_staff(restaurant_id);
@@ -128,4 +145,8 @@ CREATE INDEX idx_order_items_order ON order_items(order_id);
 CREATE INDEX idx_tables_restaurant ON tables(restaurant_id);
 CREATE INDEX idx_customization_groups_restaurant ON customization_groups(restaurant_id);
 CREATE INDEX idx_customization_options_group ON customization_options(group_id);
-CREATE INDEX idx_dietary_flags_restaurant ON dietary_flags(restaurant_id); 
+CREATE INDEX idx_dietary_flags_restaurant ON dietary_flags(restaurant_id);
+CREATE INDEX idx_menu_item_customizations_menu_item ON menu_item_customizations(menu_item_id);
+CREATE INDEX idx_menu_item_customizations_group ON menu_item_customizations(customization_group_id);
+CREATE INDEX idx_menu_item_dietary_flags_menu_item ON menu_item_dietary_flags(menu_item_id);
+CREATE INDEX idx_menu_item_dietary_flags_flag ON menu_item_dietary_flags(flag_id); 

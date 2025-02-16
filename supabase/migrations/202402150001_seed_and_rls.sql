@@ -98,6 +98,8 @@ ALTER TABLE restaurant_staff ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tables ENABLE ROW LEVEL SECURITY;
 ALTER TABLE menu_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE menu_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE menu_item_customizations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE menu_item_dietary_flags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE customization_groups ENABLE ROW LEVEL SECURITY;
@@ -116,10 +118,13 @@ DROP POLICY IF EXISTS "order_items_access_policy" ON order_items;
 DROP POLICY IF EXISTS "customization_groups_access_policy" ON customization_groups;
 DROP POLICY IF EXISTS "customization_options_access_policy" ON customization_options;
 DROP POLICY IF EXISTS "dietary_flags_access_policy" ON dietary_flags;
+DROP POLICY IF EXISTS "menu_item_customizations_access_policy" ON menu_item_customizations;
+DROP POLICY IF EXISTS "menu_item_dietary_flags_access_policy" ON menu_item_dietary_flags;
+DROP POLICY IF EXISTS "public_menu_item_customizations_access" ON menu_item_customizations;
+DROP POLICY IF EXISTS "public_menu_item_dietary_flags_access" ON menu_item_dietary_flags;
 
 -- Drop public access policies
 DROP POLICY IF EXISTS "public_restaurant_access" ON restaurants;
-DROP POLICY IF EXISTS "public_profile_access" ON profiles;
 DROP POLICY IF EXISTS "public_restaurant_staff_access" ON restaurant_staff;
 DROP POLICY IF EXISTS "public_tables_access" ON tables;
 DROP POLICY IF EXISTS "public_menu_categories_access" ON menu_categories;
@@ -129,6 +134,8 @@ DROP POLICY IF EXISTS "public_order_items_access" ON order_items;
 DROP POLICY IF EXISTS "public_customization_groups_access" ON customization_groups;
 DROP POLICY IF EXISTS "public_customization_options_access" ON customization_options;
 DROP POLICY IF EXISTS "public_dietary_flags_access" ON dietary_flags;
+DROP POLICY IF EXISTS "public_menu_item_customizations_access" ON menu_item_customizations;
+DROP POLICY IF EXISTS "public_menu_item_dietary_flags_access" ON menu_item_dietary_flags;
 
 -- Create authenticated user policies
 CREATE POLICY "restaurant_access_policy"
@@ -272,6 +279,36 @@ WITH CHECK (
     )
 );
 
+-- Create menu_item_customizations policies
+CREATE POLICY "menu_item_customizations_access_policy"
+ON menu_item_customizations
+FOR ALL
+TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 
+        FROM menu_items mi
+        JOIN restaurant_staff rs ON rs.restaurant_id = mi.restaurant_id
+        WHERE mi.id = menu_item_customizations.menu_item_id
+        AND rs.profile_id = auth.uid()
+    )
+);
+
+-- Create menu_item_dietary_flags policies
+CREATE POLICY "menu_item_dietary_flags_access_policy"
+ON menu_item_dietary_flags
+FOR ALL
+TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 
+        FROM menu_items mi
+        JOIN restaurant_staff rs ON rs.restaurant_id = mi.restaurant_id
+        WHERE mi.id = menu_item_dietary_flags.menu_item_id
+        AND rs.profile_id = auth.uid()
+    )
+);
+
 -- Create public access policies
 CREATE POLICY "public_restaurant_access"
 ON restaurants
@@ -333,10 +370,22 @@ FOR SELECT
 TO anon
 USING (true);
 
+CREATE POLICY "public_menu_item_customizations_access"
+ON menu_item_customizations
+FOR SELECT
+TO anon
+USING (true);
+
+CREATE POLICY "public_menu_item_dietary_flags_access"
+ON menu_item_dietary_flags
+FOR SELECT
+TO anon
+USING (true);
+
 -- Grant necessary permissions
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 
 -- Grant table permissions
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
-GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated; 
+GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;

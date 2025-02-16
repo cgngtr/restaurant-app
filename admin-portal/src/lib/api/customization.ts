@@ -174,7 +174,7 @@ export async function addCustomizationToMenuItem(
     .insert([
       {
         menu_item_id: menuItemId,
-        group_id: groupId,
+        customization_group_id: groupId,
         sort_order: sortOrder,
       },
     ])
@@ -193,7 +193,7 @@ export async function removeCustomizationFromMenuItem(
     .from('menu_item_customizations')
     .delete()
     .eq('menu_item_id', menuItemId)
-    .eq('group_id', groupId);
+    .eq('customization_group_id', groupId);
 
   if (error) throw error;
 }
@@ -207,7 +207,7 @@ export async function updateCustomizationSortOrder(
     .from('menu_item_customizations')
     .update({ sort_order: sortOrder })
     .eq('menu_item_id', menuItemId)
-    .eq('group_id', groupId)
+    .eq('customization_group_id', groupId)
     .select()
     .single();
 

@@ -52,7 +52,7 @@ interface CustomizationGroup {
 
 interface MenuItemCustomization {
   id: string;
-  group_id: string;
+  customization_group_id: string;
   sort_order: number;
   customization_groups: CustomizationGroup;
 }
@@ -100,7 +100,7 @@ export default function MenuPage() {
           ),
           menu_item_customizations (
             id,
-            group_id,
+            customization_group_id,
             sort_order,
             customization_groups (
               id,
