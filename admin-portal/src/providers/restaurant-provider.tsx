@@ -1,48 +1,46 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react'
-import { createClientComponentClient, Session } from '@supabase/auth-helpers-nextjs'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter, usePathname } from 'next/navigation'
 import { toast } from '@/components/ui/use-toast'
 import { getSupabaseClient } from '@/lib/supabase'
+import { Database } from '@/types/supabase'
+import { supabase } from '@/lib/supabase'
+import { User, Session } from '@supabase/supabase-js'
 
-type Restaurant = {
-  id: string
-  name: string
-  slug: string
-  logo_url: string | null
-  address: string | null
-  contact_email: string | null
-  contact_phone: string | null
-  active: boolean
+interface Restaurant {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+  address: string | null;
+  contact_email: string;
+  contact_phone: string | null;
+  active: boolean;
+  created_at: string;
 }
 
-type RestaurantStaff = {
+interface RestaurantStaffData {
   id: string;
   restaurant_id: string;
   profile_id: string;
   role: string;
-  restaurants: Restaurant;
   created_at: string;
+  restaurant: Restaurant;
 }
 
-type RestaurantContextType = {
-  restaurant: Restaurant | null
-  loading: boolean
-  error: Error | null
-  logout: () => Promise<void>
+interface RestaurantContextType {
+  restaurant: Restaurant | null;
+  isLoading: boolean;
+  error: Error | null;
 }
 
-const RestaurantContext = createContext<RestaurantContextType>({
-  restaurant: null,
-  loading: true,
-  error: null,
-  logout: async () => {},
-})
+const RestaurantContext = createContext<RestaurantContextType | undefined>(undefined);
 
-export function RestaurantProvider({ children }: { children: React.ReactNode }) {
+export const RestaurantProvider = ({ children }: { children: React.ReactNode }) => {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const router = useRouter()
   const pathname = usePathname()
@@ -56,7 +54,7 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
   // Logout fonksiyonu
   const logout = useCallback(async () => {
     try {
-      setLoading(true)
+      setIsLoading(true)
       
       // Önce state'leri temizle
       setRestaurant(null)
@@ -80,7 +78,7 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
       console.error('Logout Error:', error)
       window.location.href = '/login'
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }, [supabase])
 
@@ -97,59 +95,69 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
       // Auth sayfalarında veri yükleme
       if (isAuthPage) {
         console.log('[DEBUG] Auth page detected, skipping data load');
-        setLoading(false);
+        setIsLoading(false);
         return;
       }
 
       // Session kontrolü
       console.log('[DEBUG] Checking session...');
       
-      // Önce mevcut session'ı kontrol et
-      const { data: { session: currentSession }, error: currentSessionError } = await supabase.auth.getSession();
-      console.log('[DEBUG] Current session check:', {
-        hasSession: !!currentSession,
-        error: currentSessionError
-      });
+      let currentSession: Session | null = null;
+      let retryCount = 0;
+      const maxRetries = 3;
 
-      if (currentSessionError) {
-        console.error('[DEBUG] Current session error:', currentSessionError);
-        throw currentSessionError;
-      }
-
-      // Eğer session yoksa, refresh token ile yenilemeyi dene
-      if (!currentSession) {
-        console.log('[DEBUG] No current session, attempting refresh...');
-        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+      while (!currentSession && retryCount < maxRetries) {
+        // Önce mevcut session'ı kontrol et
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        console.log('[DEBUG] Session refresh result:', {
-          hasRefreshedSession: !!refreshedSession,
-          refreshError
-        });
+        if (session) {
+          currentSession = session;
+          break;
+        }
+
+        if (sessionError) {
+          console.error('[DEBUG] Session error:', sessionError);
+          // Hata durumunda 1 saniye bekle ve tekrar dene
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          retryCount++;
+          continue;
+        }
+
+        // Session yoksa refresh token ile yenilemeyi dene
+        console.log('[DEBUG] No current session, attempting refresh...');
+        const { data: { session: refreshedSession }, error: refreshError } = 
+          await supabase.auth.refreshSession();
+
+        if (refreshedSession) {
+          currentSession = refreshedSession;
+          break;
+        }
 
         if (refreshError) {
-          console.error('[DEBUG] Session refresh error:', refreshError);
-          throw refreshError;
+          console.error('[DEBUG] Refresh error:', refreshError);
+          // Hata durumunda 1 saniye bekle ve tekrar dene
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          retryCount++;
+          continue;
         }
 
-        if (!refreshedSession) {
-          console.log('[DEBUG] No session after refresh, logging out');
-          await logout();
-          return;
-        }
+        // Başarısız olursa 1 saniye bekle ve tekrar dene
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        retryCount++;
       }
 
-      const session = currentSession || await supabase.auth.getSession().then(res => res.data.session);
-      
-      if (!session) {
-        console.log('[DEBUG] No valid session found, logging out');
-        await logout();
+      if (!currentSession) {
+        console.log('[DEBUG] No valid session after retries, redirecting to login');
+        if (!isAuthPage) {
+          router.replace('/login');
+        }
         return;
       }
 
       try {
         // Restaurant staff ve restoran bilgilerini tek sorguda çek
-        console.log('[DEBUG] Fetching restaurant staff data for user:', session.user.id);
-        const staffResult = await supabase
+        console.log('[DEBUG] Fetching restaurant staff data for user:', currentSession.user.id);
+        const { data: staffData, error: staffError } = await supabase
           .from('restaurant_staff')
           .select(`
             id,
@@ -157,7 +165,7 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
             profile_id,
             role,
             created_at,
-            restaurant:restaurants (
+            restaurant:restaurants!inner (
               id,
               name,
               slug,
@@ -169,18 +177,11 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
               created_at
             )
           `)
-          .eq('profile_id', session.user.id)
+          .eq('profile_id', currentSession.user.id)
           .single();
 
-        console.log('[DEBUG] Raw staff query result:', staffResult);
-
-        const { data: staffData, error: staffError } = staffResult;
-
-        console.log('[DEBUG] Restaurant staff query result:', {
-          hasData: !!staffData,
-          staffError,
-          staffData
-        });
+        console.log('[DEBUG] Raw staff query result:', JSON.stringify(staffData, null, 2));
+        console.log('[DEBUG] Restaurant data structure:', staffData?.restaurant);
 
         if (staffError) {
           console.error('[DEBUG] Staff Error:', {
@@ -195,25 +196,41 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
           throw new Error('Restoran bilgilerine erişim sağlanamadı');
         }
 
-        if (!staffData?.restaurant) {
+        if (!staffData || !staffData.restaurant) {
           console.error('[DEBUG] No restaurant data found in staff data');
           throw new Error('Restoran bulunamadı');
         }
 
         // Tip güvenliği için dönüşüm
-        const restaurantData: Restaurant = {
-          id: staffData.restaurant.id,
-          name: staffData.restaurant.name,
-          slug: staffData.restaurant.slug,
-          logo_url: staffData.restaurant.logo_url,
-          address: staffData.restaurant.address,
-          contact_email: staffData.restaurant.contact_email,
-          contact_phone: staffData.restaurant.contact_phone,
-          active: staffData.restaurant.active
+        type RestaurantResponse = {
+          restaurant: {
+            id: string;
+            name: string;
+            slug: string;
+            logo_url: string | null;
+            address: string | null;
+            contact_email: string;
+            contact_phone: string | null;
+            active: boolean;
+            created_at: string;
+          };
         };
 
-        console.log('[DEBUG] Setting restaurant data:', restaurantData);
+        const typedStaffData = staffData as unknown as RestaurantResponse;
+        const restaurantData: Restaurant = {
+          id: typedStaffData.restaurant.id,
+          name: typedStaffData.restaurant.name,
+          slug: typedStaffData.restaurant.slug,
+          logo_url: typedStaffData.restaurant.logo_url,
+          address: typedStaffData.restaurant.address,
+          contact_email: typedStaffData.restaurant.contact_email,
+          contact_phone: typedStaffData.restaurant.contact_phone,
+          active: typedStaffData.restaurant.active,
+          created_at: typedStaffData.restaurant.created_at
+        };
+
         setRestaurant(restaurantData);
+        console.log('[DEBUG] Restaurant data set successfully');
         setError(null);
       } catch (dbError) {
         console.error('[DEBUG] Database operation error:', dbError);
@@ -244,12 +261,13 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
     } finally {
       console.log('[DEBUG] loadRestaurant completed');
       console.log('[DEBUG] ====== loadRestaurant Cycle End ======');
-      setLoading(false);
+      setIsLoading(false);
     }
   }, [supabase, isAuthPage, logout, restaurant?.id, pathname]);
 
   useEffect(() => {
     let mounted = true;
+    let sessionCheckInterval: NodeJS.Timeout;
 
     // İlk yükleme ve session kontrolü
     const initializeAuth = async () => {
@@ -297,6 +315,21 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
     console.log('[DEBUG] Setting up auth state listener');
     initializeAuth();
 
+    // Her 4 dakikada bir session'ı kontrol et ve gerekirse yenile
+    sessionCheckInterval = setInterval(async () => {
+      if (!mounted) return;
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          // Session varsa yenilemeyi dene
+          await supabase.auth.refreshSession();
+        }
+      } catch (error) {
+        console.error('[DEBUG] Session refresh error:', error);
+      }
+    }, 4 * 60 * 1000); // 4 dakika
+
     // Auth state değişikliklerini dinle
     const {
       data: { subscription },
@@ -316,8 +349,8 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
         if (!isAuthPage) {
           router.replace('/login');
         }
-      } else if (event === 'SIGNED_IN') {
-        console.log('[DEBUG] User signed in');
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        console.log('[DEBUG] User signed in or token refreshed');
         if (isAuthPage) {
           router.replace('/dashboard');
         } else {
@@ -333,11 +366,12 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
       console.log('[DEBUG] Cleaning up auth state listener');
       mounted = false;
       subscription.unsubscribe();
+      clearInterval(sessionCheckInterval);
     };
   }, [supabase, router, isAuthPage, loadRestaurant]);
 
   return (
-    <RestaurantContext.Provider value={{ restaurant, loading, error, logout }}>
+    <RestaurantContext.Provider value={{ restaurant, isLoading, error }}>
       {children}
     </RestaurantContext.Provider>
   )

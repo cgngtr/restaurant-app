@@ -134,6 +134,64 @@ CREATE TABLE IF NOT EXISTS menu_item_dietary_flags (
     UNIQUE(menu_item_id, flag_id)
 );
 
+-- Stock Management Tables
+CREATE TABLE IF NOT EXISTS suppliers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    restaurant_id UUID NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+    company_name VARCHAR(255) NOT NULL,
+    contact_person VARCHAR(255),
+    email VARCHAR(255),
+    phone VARCHAR(50),
+    address TEXT,
+    status VARCHAR(50) DEFAULT 'active',
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS stock_items (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    restaurant_id UUID NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+    supplier_id UUID REFERENCES suppliers(id) ON DELETE SET NULL,
+    name VARCHAR(255) NOT NULL,
+    sku VARCHAR(50),
+    description TEXT,
+    unit VARCHAR(50) NOT NULL,
+    quantity DECIMAL(10,2) DEFAULT 0,
+    minimum_quantity DECIMAL(10,2) DEFAULT 0,
+    maximum_quantity DECIMAL(10,2),
+    unit_cost DECIMAL(10,2),
+    last_ordered_at TIMESTAMPTZ,
+    last_received_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS stock_transactions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    restaurant_id UUID NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+    stock_item_id UUID NOT NULL REFERENCES stock_items(id) ON DELETE CASCADE,
+    supplier_id UUID REFERENCES suppliers(id) ON DELETE SET NULL,
+    transaction_type VARCHAR(50) NOT NULL,
+    quantity DECIMAL(10,2) NOT NULL,
+    unit_cost DECIMAL(10,2),
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    created_by UUID REFERENCES profiles(id)
+);
+
+CREATE TABLE IF NOT EXISTS stock_alerts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    restaurant_id UUID NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+    stock_item_id UUID NOT NULL REFERENCES stock_items(id) ON DELETE CASCADE,
+    alert_type VARCHAR(50) NOT NULL,
+    status VARCHAR(50) DEFAULT 'active',
+    message TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    resolved_at TIMESTAMPTZ,
+    resolved_by UUID REFERENCES profiles(id)
+);
+
 -- Create indexes for better query performance
 CREATE INDEX idx_restaurant_staff_profile ON restaurant_staff(profile_id);
 CREATE INDEX idx_restaurant_staff_restaurant ON restaurant_staff(restaurant_id);
@@ -149,4 +207,17 @@ CREATE INDEX idx_dietary_flags_restaurant ON dietary_flags(restaurant_id);
 CREATE INDEX idx_menu_item_customizations_menu_item ON menu_item_customizations(menu_item_id);
 CREATE INDEX idx_menu_item_customizations_group ON menu_item_customizations(customization_group_id);
 CREATE INDEX idx_menu_item_dietary_flags_menu_item ON menu_item_dietary_flags(menu_item_id);
-CREATE INDEX idx_menu_item_dietary_flags_flag ON menu_item_dietary_flags(flag_id); 
+CREATE INDEX idx_menu_item_dietary_flags_flag ON menu_item_dietary_flags(flag_id);
+CREATE INDEX idx_suppliers_restaurant ON suppliers(restaurant_id);
+CREATE INDEX idx_stock_items_restaurant ON stock_items(restaurant_id);
+CREATE INDEX idx_stock_items_supplier ON stock_items(supplier_id);
+CREATE INDEX idx_stock_transactions_restaurant ON stock_transactions(restaurant_id);
+CREATE INDEX idx_stock_transactions_item ON stock_transactions(stock_item_id);
+CREATE INDEX idx_stock_alerts_restaurant ON stock_alerts(restaurant_id);
+CREATE INDEX idx_stock_alerts_item ON stock_alerts(stock_item_id);
+
+-- Enable RLS for tables
+ALTER TABLE suppliers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE stock_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE stock_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE stock_alerts ENABLE ROW LEVEL SECURITY; 

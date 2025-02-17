@@ -21,11 +21,13 @@ VALUES (
     '2025-02-09 01:09:27.433435+00'
 );
 
-INSERT INTO restaurant_staff (restaurant_id, profile_id, role)
+INSERT INTO restaurant_staff (id, restaurant_id, profile_id, role, created_at)
 VALUES (
+    'f47ac10b-58cc-4372-a567-0e02b2c3d479',
     '2f3c2e2e-6166-4f32-a0d9-6083548cac83',
     '3bb6d889-7065-4a4e-8ca9-116113c9c43e',
-    'owner'
+    'owner',
+    '2025-02-09 01:09:27.433435+00'
 );
 
 -- Seed tables
@@ -419,3 +421,102 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 -- Grant table permissions
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
+
+CREATE POLICY "suppliers_access_policy"
+ON suppliers
+FOR ALL
+TO authenticated
+USING (
+    restaurant_id IN (
+        SELECT restaurant_id 
+        FROM restaurant_staff 
+        WHERE profile_id = auth.uid()
+    )
+);
+
+CREATE POLICY "stock_items_access_policy"
+ON stock_items
+FOR ALL
+TO authenticated
+USING (
+    restaurant_id IN (
+        SELECT restaurant_id 
+        FROM restaurant_staff 
+        WHERE profile_id = auth.uid()
+    )
+);
+
+CREATE POLICY "stock_transactions_access_policy"
+ON stock_transactions
+FOR ALL
+TO authenticated
+USING (
+    restaurant_id IN (
+        SELECT restaurant_id 
+        FROM restaurant_staff 
+        WHERE profile_id = auth.uid()
+    )
+);
+
+CREATE POLICY "stock_alerts_access_policy"
+ON stock_alerts
+FOR ALL
+TO authenticated
+USING (
+    restaurant_id IN (
+        SELECT restaurant_id 
+        FROM restaurant_staff 
+        WHERE profile_id = auth.uid()
+    )
+);
+
+-- Stock Management Sample Data
+INSERT INTO suppliers (id, restaurant_id, company_name, contact_person, email, phone, address, status)
+VALUES 
+    ('f6088c5a-9e0a-7e1d-2e7f-1a7f4e9a2a3d', '2f3c2e2e-6166-4f32-a0d9-6083548cac83', 'Fresh Produce Co.', 'John Smith', 'john@freshproduce.com', '+90 532 555 1234', '123 Market St, Istanbul', 'active'),
+    ('871a9d6a-0f1a-8f2e-3f8a-2a8a5f0a3a4e', '2f3c2e2e-6166-4f32-a0d9-6083548cac83', 'Global Packaging Ltd.', 'Emma Wilson', 'emma@globalpack.com', '+90 533 555 5678', '456 Industry Ave, Ankara', 'active');
+
+INSERT INTO stock_items (id, restaurant_id, supplier_id, name, sku, description, unit, quantity, minimum_quantity, maximum_quantity, unit_cost, last_ordered_at, last_received_at)
+VALUES 
+    ('a8230e7a-1a2b-9a3f-4a9b-3a9b6a1a4a5f', '2f3c2e2e-6166-4f32-a0d9-6083548cac83', 'f6088c5a-9e0a-7e1d-2e7f-1a7f4e9a2a3d', 'Tomatoes', 'TOM001', 'Fresh red tomatoes', 'kg', 50, 20, 100, 2.50, NULL, NULL),
+    ('1931f8aa-2a3b-0a4a-5a0a-4a0a7a2a5a6a', '2f3c2e2e-6166-4f32-a0d9-6083548cac83', '871a9d6a-0f1a-8f2e-3f8a-2a8a5f0a3a4e', 'Packaging Boxes', 'BOX001', 'Standard size packaging boxes', 'unit', 1000, 500, 2000, 0.75, NULL, NULL);
+
+INSERT INTO stock_transactions (id, restaurant_id, stock_item_id, supplier_id, transaction_type, quantity, unit_cost, notes, created_by)
+VALUES 
+    ('104a2a9a-314a-115a-611a-5a1a8a3a6a7a', '2f3c2e2e-6166-4f32-a0d9-6083548cac83', 'a8230e7a-1a2b-9a3f-4a9b-3a9b6a1a4a5f', 'f6088c5a-9e0a-7e1d-2e7f-1a7f4e9a2a3d', 'received', 50, 2.50, 'Initial stock', '3bb6d889-7065-4a4e-8ca9-116113c9c43e');
+
+INSERT INTO stock_alerts (id, restaurant_id, stock_item_id, alert_type, status, message)
+VALUES 
+    ('a15a3a0a-4a5a-2a6a-7a2a-6a2a9a4a7a8a', '2f3c2e2e-6166-4f32-a0d9-6083548cac83', 'a8230e7a-1a2b-9a3f-4a9b-3a9b6a1a4a5f', 'low_stock', 'active', 'Tomatoes stock is running low');
+
+CREATE POLICY "suppliers_restaurant_access" ON suppliers
+FOR ALL USING (
+  restaurant_id IN (
+    SELECT restaurant_id FROM restaurant_staff 
+    WHERE profile_id = auth.uid()
+  )
+);
+
+CREATE POLICY "stock_items_restaurant_access" ON stock_items
+FOR ALL USING (
+  restaurant_id IN (
+    SELECT restaurant_id FROM restaurant_staff 
+    WHERE profile_id = auth.uid()
+  )
+);
+
+CREATE POLICY "stock_transactions_restaurant_access" ON stock_transactions
+FOR ALL USING (
+  restaurant_id IN (
+    SELECT restaurant_id FROM restaurant_staff 
+    WHERE profile_id = auth.uid()
+  )
+);
+
+CREATE POLICY "stock_alerts_restaurant_access" ON stock_alerts
+FOR ALL USING (
+  restaurant_id IN (
+    SELECT restaurant_id FROM restaurant_staff 
+    WHERE profile_id = auth.uid()
+  )
+);
