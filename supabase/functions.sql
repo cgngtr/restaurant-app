@@ -86,4 +86,41 @@ create trigger order_items_availability_trigger
   before insert
   on order_items
   for each row
-  execute function check_menu_item_availability(); 
+  execute function check_menu_item_availability();
+
+-- Function to generate next manual order number
+CREATE OR REPLACE FUNCTION public.next_manual_order_number(table_number text)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    current_date text;
+    last_number integer;
+    next_number integer;
+    result text;
+BEGIN
+    -- Get current date in YYYYMMDD format
+    current_date := to_char(CURRENT_DATE, 'YYYYMMDD');
+    
+    -- Find the last order number for this table and date
+    SELECT COALESCE(MAX(
+        CASE 
+            WHEN order_number ~ ('^' || table_number || current_date || '[0-9]{3}$')
+            THEN CAST(RIGHT(order_number, 3) AS INTEGER)
+            ELSE 0
+        END
+    ), 0)
+    INTO last_number
+    FROM orders
+    WHERE order_number LIKE table_number || current_date || '%';
+    
+    -- Calculate next number
+    next_number := last_number + 1;
+    
+    -- Format result as: TABLE_NUMBER + YYYYMMDD + 3-digit sequence
+    result := table_number || current_date || LPAD(next_number::text, 3, '0');
+    
+    RETURN result;
+END;
+$$; 

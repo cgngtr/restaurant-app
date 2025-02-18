@@ -1,0 +1,6 @@
+---
+description: No Supabase CLI Commands 
+globs: .sql
+---
+
+Don't use supabase cli commands and don't forget that I'm using Supabase on my browser.

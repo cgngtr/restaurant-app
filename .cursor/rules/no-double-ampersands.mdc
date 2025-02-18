@@ -1,0 +1,6 @@
+---
+description: No double ampersands
+globs: 
+---
+
+When you want to add different command lines together, don't use double ampersand ("&&"). Please use ";" instead.

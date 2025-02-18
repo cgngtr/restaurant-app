@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
@@ -14,16 +15,65 @@ import {
   FileSpreadsheet,
   Plus
 } from 'lucide-react'
+import { useRestaurant } from "@/providers/restaurant-provider"
+import { supabase } from "@/lib/supabase"
 
-// Dummy data for initial UI
-const QUICK_STATS = {
-  totalItems: 156,
-  lowStockItems: 12,
-  overstockedItems: 5,
-  stockValue: 24680
+interface StockStats {
+  totalItems: number
+  lowStockItems: number
+  overstockedItems: number
+  stockValue: number
 }
 
 export default function Test1Page() {
+  const { restaurant } = useRestaurant()
+  const [stats, setStats] = useState<StockStats>({
+    totalItems: 0,
+    lowStockItems: 0,
+    overstockedItems: 0,
+    stockValue: 0
+  })
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const loadStockStats = async () => {
+      if (!restaurant?.id) return
+
+      try {
+        // Fetch all stock items
+        const { data: stockItems, error: stockError } = await supabase
+          .from('stock_items')
+          .select('*')
+          .eq('restaurant_id', restaurant.id)
+
+        if (stockError) throw stockError
+
+        if (stockItems) {
+          const stats: StockStats = {
+            totalItems: stockItems.length,
+            lowStockItems: stockItems.filter(item => 
+              item.quantity <= item.minimum_quantity
+            ).length,
+            overstockedItems: stockItems.filter(item => 
+              item.maximum_quantity !== null && 
+              item.quantity >= item.maximum_quantity
+            ).length,
+            stockValue: stockItems.reduce((total, item) => 
+              total + (item.quantity * (item.unit_cost || 0)), 0
+            )
+          }
+          setStats(stats)
+        }
+      } catch (error) {
+        console.error('Error loading stock stats:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadStockStats()
+  }, [restaurant?.id])
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
@@ -49,7 +99,9 @@ export default function Test1Page() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{QUICK_STATS.totalItems}</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? "..." : stats.totalItems}
+            </div>
             <p className="text-xs text-muted-foreground">
               Items in inventory
             </p>
@@ -61,7 +113,9 @@ export default function Test1Page() {
             <TrendingDown className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-500">{QUICK_STATS.lowStockItems}</div>
+            <div className="text-2xl font-bold text-red-500">
+              {isLoading ? "..." : stats.lowStockItems}
+            </div>
             <p className="text-xs text-muted-foreground">
               Items below minimum
             </p>
@@ -73,7 +127,9 @@ export default function Test1Page() {
             <AlertTriangle className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-500">{QUICK_STATS.overstockedItems}</div>
+            <div className="text-2xl font-bold text-yellow-500">
+              {isLoading ? "..." : stats.overstockedItems}
+            </div>
             <p className="text-xs text-muted-foreground">
               Items above maximum
             </p>
@@ -85,7 +141,9 @@ export default function Test1Page() {
             <Box className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${QUICK_STATS.stockValue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">
+              ₺{isLoading ? "..." : stats.stockValue.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
               Total inventory value
             </p>
@@ -95,7 +153,7 @@ export default function Test1Page() {
 
       {/* Feature Cards */}
       <div className="grid gap-6 md:grid-cols-3">
-        <Link href="/test/test2">
+        <Link href="/stock/current-stock">
           <Card className="hover:bg-accent cursor-pointer transition-colors">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -115,7 +173,7 @@ export default function Test1Page() {
           </Card>
         </Link>
 
-        <Link href="/test/test3">
+        <Link href="/stock/categories">
           <Card className="hover:bg-accent cursor-pointer transition-colors">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -135,7 +193,7 @@ export default function Test1Page() {
           </Card>
         </Link>
 
-        <Link href="/test/test4">
+        <Link href="/stock/suppliers">
           <Card className="hover:bg-accent cursor-pointer transition-colors">
             <CardHeader>
               <div className="flex items-center justify-between">
