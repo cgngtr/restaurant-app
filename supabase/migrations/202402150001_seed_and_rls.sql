@@ -489,6 +489,70 @@ INSERT INTO stock_alerts (id, restaurant_id, stock_item_id, alert_type, status, 
 VALUES 
     ('a15a3a0a-4a5a-2a6a-7a2a-6a2a9a4a7a8a', '2f3c2e2e-6166-4f32-a0d9-6083548cac83', 'a8230e7a-1a2b-9a3f-4a9b-3a9b6a1a4a5f', 'low_stock', 'active', 'Tomatoes stock is running low');
 
+-- Enable RLS for navigation_settings
+ALTER TABLE navigation_settings ENABLE ROW LEVEL SECURITY;
+
+-- Create navigation_settings index
+CREATE INDEX idx_navigation_settings_restaurant ON navigation_settings(restaurant_id);
+
+-- Create policy for authenticated users
+DROP POLICY IF EXISTS "navigation_settings_access_policy" ON navigation_settings;
+
+CREATE POLICY "navigation_settings_access_policy"
+ON navigation_settings
+FOR ALL
+TO authenticated
+USING (
+    restaurant_id IN (
+        SELECT restaurant_id 
+        FROM restaurant_staff 
+        WHERE profile_id = auth.uid()
+    )
+)
+WITH CHECK (
+    restaurant_id IN (
+        SELECT restaurant_id 
+        FROM restaurant_staff 
+        WHERE profile_id = auth.uid()
+    )
+);
+
+-- Insert default navigation items for our sample restaurant
+INSERT INTO navigation_settings (id, restaurant_id, name, href, icon, sort_order, is_visible) 
+VALUES 
+    ('d1a2b3c4-e5f6-4a5b-9c8d-1a2b3c4d5e6f', '2f3c2e2e-6166-4f32-a0d9-6083548cac83', 'Dashboard', '/dashboard', 'LayoutDashboard', 1, true),
+    ('e2b3c4d5-f6a7-5b6c-0d9e-2b3c4d5e6f7a', '2f3c2e2e-6166-4f32-a0d9-6083548cac83', 'Menu', '/menu', 'MenuIcon', 2, true),
+    ('f3c4d5e6-a7b8-6c7d-1e2f-3c4d5e6f7a8b', '2f3c2e2e-6166-4f32-a0d9-6083548cac83', 'Tables', '/tables', 'Table2', 3, true),
+    ('a4d5e6f7-b8c9-7d8e-2f3a-4d5e6f7a8b9c', '2f3c2e2e-6166-4f32-a0d9-6083548cac83', 'Orders', '/orders', 'ClipboardList', 4, true);
+
+-- Insert Stock management with children
+WITH stock_parent AS (
+    INSERT INTO navigation_settings (id, restaurant_id, name, href, icon, sort_order, is_visible)
+    VALUES ('b5e6f7a8-c9d0-8e9f-3a4b-5e6f7a8b9c0d', '2f3c2e2e-6166-4f32-a0d9-6083548cac83', 'Stock', '/stock', 'Package', 5, true)
+    RETURNING id
+)
+INSERT INTO navigation_settings (restaurant_id, name, href, icon, parent_id, sort_order, is_visible)
+SELECT 
+    '2f3c2e2e-6166-4f32-a0d9-6083548cac83',
+    name,
+    href,
+    icon,
+    stock_parent.id,
+    sort_order,
+    true
+FROM stock_parent, (VALUES 
+    ('Current Stock', '/stock/current-stock', 'Package', 1),
+    ('Categories', '/stock/categories', 'FolderTree', 2),
+    ('Suppliers', '/stock/suppliers', 'Building2', 3)
+) AS children(name, href, icon, sort_order);
+
+-- Insert remaining items
+INSERT INTO navigation_settings (id, restaurant_id, name, href, icon, sort_order, is_visible) 
+VALUES 
+    ('c6f7a8b9-d0e1-9f0a-4b5c-6f7a8b9c0d1e', '2f3c2e2e-6166-4f32-a0d9-6083548cac83', 'Finance Calculator', '/finance-calculator', 'Calculator', 6, true),
+    ('d7a8b9c0-e1f2-0a1b-5c6d-7a8b9c0d1e2f', '2f3c2e2e-6166-4f32-a0d9-6083548cac83', 'Customization', '/customization', 'Sliders', 7, true),
+    ('e8b9c0d1-f2a3-1b2c-6d7e-8b9c0d1e2f3a', '2f3c2e2e-6166-4f32-a0d9-6083548cac83', 'Settings', '/settings', 'Settings', 8, true);
+
 CREATE POLICY "suppliers_restaurant_access" ON suppliers
 FOR ALL USING (
   restaurant_id IN (

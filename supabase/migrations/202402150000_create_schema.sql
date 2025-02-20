@@ -192,6 +192,21 @@ CREATE TABLE IF NOT EXISTS stock_alerts (
     resolved_by UUID REFERENCES profiles(id)
 );
 
+-- Navigation Settings Table
+CREATE TABLE IF NOT EXISTS navigation_settings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    restaurant_id UUID NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    href VARCHAR(255) NOT NULL,
+    icon VARCHAR(50) NOT NULL,
+    parent_id UUID REFERENCES navigation_settings(id) ON DELETE CASCADE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_visible BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(restaurant_id, href)
+);
+
 -- Create indexes for better query performance
 CREATE INDEX idx_restaurant_staff_profile ON restaurant_staff(profile_id);
 CREATE INDEX idx_restaurant_staff_restaurant ON restaurant_staff(restaurant_id);
