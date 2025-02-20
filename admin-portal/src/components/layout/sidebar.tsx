@@ -16,7 +16,8 @@ import {
   Package,
   FolderTree,
   Building2,
-  ChevronDown
+  ChevronDown,
+  Calculator
 } from 'lucide-react'
 import { useRoutePrefetch } from '@/hooks/use-route-prefetch'
 import { useEffect, useState } from 'react'
@@ -38,6 +39,7 @@ const navigation = [
       { name: 'Suppliers', href: '/stock/suppliers', icon: Building2 }
     ]
   },
+  { name: 'Finance Calculator', href: '/finance-calculator', icon: Calculator },
   { name: 'Customization', href: '/customization', icon: Sliders },
   { name: 'Settings', href: '/settings', icon: Settings }
 ]
@@ -93,14 +95,14 @@ export function Sidebar() {
   }
 
   return (
-    <div className="fixed inset-y-0 left-0 z-50 w-64 bg-background border-r">
+    <div className="fixed inset-y-0 left-0 z-50 w-64 bg-background border-r flex flex-col">
       <div className="flex h-16 shrink-0 items-center border-b px-6">
         <Store className="h-6 w-6 text-primary" />
         <span className="ml-3 text-lg font-semibold text-foreground">QR Order App</span>
       </div>
       
-      <nav className="flex flex-1 flex-col">
-        <ul role="list" className="flex flex-1 flex-col gap-1 p-4">
+      <nav className="flex-1 overflow-y-auto">
+        <ul role="list" className="flex flex-col gap-1 p-4">
           {navigation.map((item) => {
             if (item.children) {
               const isActive = pathname?.startsWith(item.href.split('/')[1])
@@ -163,21 +165,20 @@ export function Sidebar() {
             )
           })}
         </ul>
-        <div className="border-t p-4 space-y-4">
-          <Button 
-            variant="ghost" 
-            className="w-full justify-start gap-3 text-muted-foreground hover:text-accent-foreground"
-            onClick={handleLogout}
-            disabled={isLoggingOut}
-          >
-            <LogOut className="h-5 w-5 shrink-0" />
-            {isLoggingOut ? 'Çıkış yapılıyor...' : 'Çıkış Yap'}
-          </Button>
-          <div className="flex justify-center">
-            <ThemeToggle />
-          </div>
-        </div>
       </nav>
+      <div className="border-t p-4 flex items-center">
+        <Button 
+          variant="ghost" 
+          className="flex-1 justify-start text-muted-foreground hover:text-accent-foreground hover:bg-accent/50 px-3 py-2 h-auto"
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+        >
+          <LogOut className="h-5 w-5 shrink-0 mr-3" />
+          {isLoggingOut ? 'Logging Out...' : 'Log Out'}
+        </Button>
+        <div className="h-8 w-[1px] bg-border mx-4" />
+        <ThemeToggle />
+      </div>
     </div>
   )
 } 
