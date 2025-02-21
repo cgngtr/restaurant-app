@@ -22,7 +22,7 @@ interface DatabaseStaffMember {
   id: string
   profile_id: string
   role: string
-  profiles: { email: string }[]
+  profiles: { email: string } // Changed from array to object
 }
 
 // Helper function for role badge colors
@@ -57,12 +57,7 @@ export default function StaffPage() {
     try {
       const { data, error } = await supabase
         .from('restaurant_staff')
-        .select(`
-          id,
-          profile_id,
-          role,
-          profiles!inner(email)
-        `)
+        .select(`id, profile_id, role, profiles!inner(email)`) // Added !inner to ensure profiles is an object
         .eq('restaurant_id', restaurant.id)
         .order('created_at')
 
@@ -71,8 +66,8 @@ export default function StaffPage() {
       console.log('Fetched data:', data);
 
       // Transform the data to match StaffMember interface
-      const transformedData: StaffMember[] = (data as DatabaseStaffMember[] || []).map(staff => {
-        const email = staff.profiles?.[0]?.email || ''
+      const transformedData: StaffMember[] = (data as unknown as DatabaseStaffMember[] || []).map(staff => {
+        const email = staff.profiles?.email || '' // Updated to access email directly
         return {
           id: staff.id,
           name: email ? email.split('@')[0] : 'Unknown',
