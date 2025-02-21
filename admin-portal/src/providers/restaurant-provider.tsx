@@ -62,6 +62,35 @@ export const RestaurantProvider = ({ children }: { children: React.ReactNode }) 
         return;
       }
 
+      // First check if user is superadmin
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+
+      if (profileError) {
+        throw new Error('Kullanıcı profili bulunamadı');
+      }
+
+      // If user is superadmin, return default admin restaurant
+      if (profileData?.role === 'superadmin') {
+        setRestaurant({
+          id: 'admin',
+          name: 'Admin',
+          slug: 'admin',
+          logo_url: null,
+          address: null,
+          contact_email: session.user.email || '',
+          contact_phone: null,
+          active: true,
+          created_at: new Date().toISOString()
+        });
+        setError(null);
+        setIsLoading(false);
+        return;
+      }
+
       // Restaurant staff ve restoran bilgilerini tek sorguda çek
       const { data: staffData, error: staffError } = await supabase
         .from('restaurant_staff')

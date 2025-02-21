@@ -1,6 +1,22 @@
 import { Database } from '@/types/supabase'
 
-export type NavigationItem = Database['public']['Tables']['navigation_settings']['Row']
+export type NavigationItem = {
+  id: string;
+  name: string;
+  href: string;
+  icon: string;
+  parent_id?: string;
+  sort_order: number;
+  is_visible: boolean;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type RestaurantNavigationItem = NavigationItem & {
+  restaurant_id: string;
+};
+
+export type SuperadminNavigationItem = NavigationItem;
 
 export interface NavigationItemWithChildren extends Omit<NavigationItem, 'parent_id'> {
   parent_id?: string | null

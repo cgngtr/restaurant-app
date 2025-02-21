@@ -9,6 +9,32 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      profiles: {
+        Row: {
+          id: string
+          email: string
+          display_name: string
+          role: 'superadmin' | 'restaurant_owner' | 'staff'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          email: string
+          display_name: string
+          role: 'superadmin' | 'restaurant_owner' | 'staff'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          email?: string
+          display_name?: string
+          role?: 'superadmin' | 'restaurant_owner' | 'staff'
+          created_at?: string
+          updated_at?: string
+        }
+      }
       restaurants: {
         Row: {
           id: string
@@ -16,7 +42,7 @@ export interface Database {
           slug: string
           logo_url: string | null
           address: string | null
-          contact_email: string
+          contact_email: string | null
           contact_phone: string | null
           created_at: string
           active: boolean
@@ -27,7 +53,7 @@ export interface Database {
           slug: string
           logo_url?: string | null
           address?: string | null
-          contact_email: string
+          contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
           active?: boolean
@@ -38,161 +64,121 @@ export interface Database {
           slug?: string
           logo_url?: string | null
           address?: string | null
-          contact_email?: string
+          contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
           active?: boolean
-        }
-      }
-      tables: {
-        Row: {
-          id: string
-          restaurant_id: string
-          table_number: string
-          status: 'available' | 'occupied' | 'reserved'
-          qr_code_url: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          restaurant_id: string
-          table_number: string
-          status?: 'available' | 'occupied' | 'reserved'
-          qr_code_url?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          restaurant_id?: string
-          table_number?: string
-          status?: 'available' | 'occupied' | 'reserved'
-          qr_code_url?: string | null
-          created_at?: string
-        }
-      }
-      menu_categories: {
-        Row: {
-          id: string
-          restaurant_id: string
-          name: string
-          sort_order: number
-          active: boolean
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          restaurant_id: string
-          name: string
-          sort_order?: number
-          active?: boolean
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          restaurant_id?: string
-          name?: string
-          sort_order?: number
-          active?: boolean
-          created_at?: string
-        }
-      }
-      menu_items: {
-        Row: {
-          id: string
-          restaurant_id: string
-          category_id: string
-          name: string
-          description: string | null
-          price: number
-          image_url: string | null
-          is_available: boolean
-          dietary_flags: Json
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          restaurant_id: string
-          category_id: string
-          name: string
-          description?: string | null
-          price: number
-          image_url?: string | null
-          is_available?: boolean
-          dietary_flags?: Json
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          restaurant_id?: string
-          category_id?: string
-          name?: string
-          description?: string | null
-          price?: number
-          image_url?: string | null
-          is_available?: boolean
-          dietary_flags?: Json
-          created_at?: string
         }
       }
       orders: {
         Row: {
           id: string
           restaurant_id: string
-          table_id: string
-          status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled'
+          table_id: string | null
+          status: string
           total_amount: number
           notes: string | null
+          created_at: string
+          updated_at: string
+          order_number: string
+          payment_status: string
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          table_id?: string | null
+          status: string
+          total_amount: number
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+          order_number: string
+          payment_status?: string
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          table_id?: string | null
+          status?: string
+          total_amount?: number
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+          order_number?: string
+          payment_status?: string
+        }
+      }
+      navigation_settings: {
+        Row: {
+          id: string
+          restaurant_id: string
+          name: string
+          href: string
+          icon: string
+          parent_id: string | null
+          sort_order: number
+          is_visible: boolean
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
           restaurant_id: string
-          table_id: string
-          status?: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled'
-          total_amount: number
-          notes?: string | null
+          name: string
+          href: string
+          icon: string
+          parent_id?: string | null
+          sort_order?: number
+          is_visible?: boolean
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
           restaurant_id?: string
-          table_id?: string
-          status?: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled'
-          total_amount?: number
-          notes?: string | null
+          name?: string
+          href?: string
+          icon?: string
+          parent_id?: string | null
+          sort_order?: number
+          is_visible?: boolean
           created_at?: string
           updated_at?: string
         }
       }
-      order_items: {
+      superadmin_navigation_settings: {
         Row: {
           id: string
-          order_id: string
-          menu_item_id: string
-          quantity: number
-          unit_price: number
-          notes: string | null
+          name: string
+          href: string
+          icon: string
+          parent_id: string | null
+          sort_order: number
+          is_visible: boolean
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
-          order_id: string
-          menu_item_id: string
-          quantity: number
-          unit_price: number
-          notes?: string | null
+          name: string
+          href: string
+          icon: string
+          parent_id?: string | null
+          sort_order?: number
+          is_visible?: boolean
           created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
-          order_id?: string
-          menu_item_id?: string
-          quantity?: number
-          unit_price?: number
-          notes?: string | null
+          name?: string
+          href?: string
+          icon?: string
+          parent_id?: string | null
+          sort_order?: number
+          is_visible?: boolean
           created_at?: string
+          updated_at?: string
         }
       }
     }

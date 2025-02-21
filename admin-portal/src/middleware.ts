@@ -15,8 +15,16 @@ export async function middleware(request: NextRequest) {
   // Auth sayfaları için kontrol (login, register)
   if (request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/register')) {
     if (session) {
-      // Kullanıcı giriş yapmışsa auth sayfalarına erişemez
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+      // Check if user is superadmin
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single()
+
+      // Redirect superadmin to admin dashboard, others to regular dashboard
+      const redirectPath = profileData?.role === 'superadmin' ? '/admin/dashboard' : '/dashboard'
+      return NextResponse.redirect(new URL(redirectPath, request.url))
     }
     return res
   }
@@ -31,6 +39,23 @@ export async function middleware(request: NextRequest) {
     const redirectUrl = new URL('/login', request.url)
     redirectUrl.searchParams.set('redirectedFrom', request.nextUrl.pathname)
     return NextResponse.redirect(redirectUrl)
+  }
+
+  // Check user role and handle admin routes
+  const { data: profileData } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', session.user.id)
+    .single()
+
+  const isSuperadmin = profileData?.role === 'superadmin'
+  const isAdminRoute = request.nextUrl.pathname.startsWith('/admin')
+
+  // Redirect superadmin to admin routes and regular users to non-admin routes
+  if (isSuperadmin && !isAdminRoute && request.nextUrl.pathname !== '/') {
+    return NextResponse.redirect(new URL('/admin' + request.nextUrl.pathname, request.url))
+  } else if (!isSuperadmin && isAdminRoute) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   return res

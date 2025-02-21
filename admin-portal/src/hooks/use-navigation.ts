@@ -3,6 +3,61 @@ import { useRestaurant } from '@/providers/restaurant-provider'
 import { supabase } from '@/lib/supabase'
 import type { NavigationItem, NavigationItemWithChildren, NavigationUpdatePayload, NavigationCreatePayload } from '@/types/navigation'
 
+const ADMIN_NAVIGATION: NavigationItemWithChildren[] = [
+  {
+    id: 'dashboard',
+    name: 'Dashboard',
+    href: '/admin/dashboard',
+    icon: 'LayoutDashboard',
+    is_visible: true,
+    sort_order: 1,
+    restaurant_id: 'admin',
+    parent_id: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    children: []
+  },
+  {
+    id: 'restaurants',
+    name: 'Restaurants',
+    href: '/admin/restaurants',
+    icon: 'Store',
+    is_visible: true,
+    sort_order: 2,
+    restaurant_id: 'admin',
+    parent_id: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    children: []
+  },
+  {
+    id: 'users',
+    name: 'Users',
+    href: '/admin/users',
+    icon: 'Users',
+    is_visible: true,
+    sort_order: 3,
+    restaurant_id: 'admin',
+    parent_id: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    children: []
+  },
+  {
+    id: 'settings',
+    name: 'Settings',
+    href: '/admin/settings',
+    icon: 'Settings',
+    is_visible: true,
+    sort_order: 4,
+    restaurant_id: 'admin',
+    parent_id: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    children: []
+  }
+]
+
 export const useNavigation = () => {
   const { restaurant } = useRestaurant()
   const [navigation, setNavigation] = useState<NavigationItemWithChildren[]>([])
@@ -16,6 +71,13 @@ export const useNavigation = () => {
     try {
       setLoading(true)
       setError(null)
+
+      // If admin restaurant, return admin navigation
+      if (restaurant.id === 'admin') {
+        setNavigation(ADMIN_NAVIGATION)
+        setLoading(false)
+        return
+      }
 
       const { data, error } = await supabase
         .from('navigation_settings')

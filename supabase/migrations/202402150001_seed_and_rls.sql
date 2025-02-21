@@ -16,8 +16,19 @@ INSERT INTO profiles (id, email, display_name, role, created_at, updated_at)
 VALUES (
     '3bb6d889-7065-4a4e-8ca9-116113c9c43e',
     'cgngtr1014@hotmail.com',
-    'Çağan Uğtur',
+    'Töre Çalışkan',
     'restaurant_owner',
+    '2025-02-09 01:09:27.433435+00',
+    '2025-02-09 01:09:27.433435+00'
+);
+
+-- Add superadmin profile
+INSERT INTO profiles (id, email, display_name, role, created_at, updated_at) 
+VALUES (
+    'ca1b13f5-b086-421b-8c32-823f71a2c7ad',
+    'cgngtr5026@hotmail.com',
+    'Çağan Uğtur (Admin)',
+    'superadmin',
     '2025-02-09 01:09:27.433435+00',
     '2025-02-09 01:09:27.433435+00'
 );
@@ -586,3 +597,119 @@ FOR ALL USING (
     WHERE profile_id = auth.uid()
   )
 );
+
+-- Create superadmin navigation table
+CREATE TABLE IF NOT EXISTS superadmin_navigation_settings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    href VARCHAR(255) NOT NULL,
+    icon VARCHAR(50) NOT NULL,
+    parent_id UUID REFERENCES superadmin_navigation_settings(id) ON DELETE CASCADE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_visible BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS for superadmin_navigation_settings
+ALTER TABLE superadmin_navigation_settings ENABLE ROW LEVEL SECURITY;
+
+-- Create policy for superadmin access
+CREATE POLICY "superadmin_navigation_settings_access_policy"
+ON superadmin_navigation_settings
+FOR ALL
+TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 FROM profiles
+        WHERE id = auth.uid()
+        AND role = 'superadmin'
+    )
+)
+WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM profiles
+        WHERE id = auth.uid()
+        AND role = 'superadmin'
+    )
+);
+
+-- Insert superadmin navigation items
+INSERT INTO superadmin_navigation_settings (id, name, href, icon, sort_order, is_visible) 
+VALUES 
+    ('f9a8b7c6-d5e4-3f2e-1a0b-9c8d7e6f5a4b', 'Admin Dashboard', '/admin/dashboard', 'LayoutDashboard', 1, true),
+    ('e8b7a6d5-c4f3-2e1d-0b9a-8c7d6e5f4a3b', 'Restaurants', '/admin/restaurants', 'Store', 2, true),
+    ('d7c6b5a4-e3f2-1d0c-9b8a-7c6d5e4f3a2b', 'Users', '/admin/users', 'Users', 3, true),
+    ('c6b5a4d3-f2e1-0c9b-8a7b-6c5d4e3f2a1b', 'Analytics', '/admin/analytics', 'BarChart', 4, true),
+    ('b5a4c3d2-e1f0-9b8a-7b6c-5d4e3f2a1b0c', 'Settings', '/admin/settings', 'Settings', 5, true);
+
+-- Create index for superadmin navigation
+CREATE INDEX idx_superadmin_navigation_settings_parent ON superadmin_navigation_settings(parent_id);
+
+-- Create superadmin access policies
+CREATE OR REPLACE FUNCTION is_superadmin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM profiles
+    WHERE id = auth.uid()
+    AND role = 'superadmin'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Add superadmin access to all restaurants
+CREATE POLICY "superadmin_restaurant_access"
+ON restaurants
+FOR ALL
+TO authenticated
+USING (is_superadmin())
+WITH CHECK (is_superadmin());
+
+-- Add superadmin access to all profiles
+CREATE POLICY "superadmin_profile_access"
+ON profiles
+FOR ALL
+TO authenticated
+USING (is_superadmin())
+WITH CHECK (is_superadmin());
+
+-- Add superadmin access to all restaurant staff
+CREATE POLICY "superadmin_restaurant_staff_access"
+ON restaurant_staff
+FOR ALL
+TO authenticated
+USING (is_superadmin())
+WITH CHECK (is_superadmin());
+
+-- Add superadmin access to all tables
+CREATE POLICY "superadmin_tables_access"
+ON tables
+FOR ALL
+TO authenticated
+USING (is_superadmin())
+WITH CHECK (is_superadmin());
+
+-- Add superadmin access to all orders
+CREATE POLICY "superadmin_orders_access"
+ON orders
+FOR ALL
+TO authenticated
+USING (is_superadmin())
+WITH CHECK (is_superadmin());
+
+-- Add superadmin access to all menu items
+CREATE POLICY "superadmin_menu_items_access"
+ON menu_items
+FOR ALL
+TO authenticated
+USING (is_superadmin())
+WITH CHECK (is_superadmin());
+
+-- Add superadmin access to all stock items
+CREATE POLICY "superadmin_stock_items_access"
+ON stock_items
+FOR ALL
+TO authenticated
+USING (is_superadmin())
+WITH CHECK (is_superadmin());
