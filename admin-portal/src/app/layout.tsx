@@ -20,9 +20,20 @@ export default async function RootLayout({
       <head>
         <title>QR Order Admin</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <Script id="hydration-handler">
+        <Script id="extension-handler" strategy="beforeInteractive">
           {`
-            // Browser extension class'larını temizle
+            // Prevent AudioContext initialization
+            if (window.AudioContext || window.webkitAudioContext) {
+              const originalAudioContext = window.AudioContext || window.webkitAudioContext;
+              window.AudioContext = class extends originalAudioContext {
+                constructor(options) {
+                  super(options);
+                }
+              };
+              window.webkitAudioContext = window.AudioContext;
+            }
+
+            // Clean up browser extension classes
             window.addEventListener('load', function() {
               const body = document.body;
               const originalClasses = body.className.split(' ').filter(cls => 

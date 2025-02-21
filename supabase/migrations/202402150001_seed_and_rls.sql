@@ -12,10 +12,11 @@ VALUES (
     true
 );
 
-INSERT INTO profiles (id, email, role, created_at, updated_at) 
+INSERT INTO profiles (id, email, display_name, role, created_at, updated_at) 
 VALUES (
     '3bb6d889-7065-4a4e-8ca9-116113c9c43e',
     'cgngtr1014@hotmail.com',
+    'Çağan Uğtur',
     'restaurant_owner',
     '2025-02-09 01:09:27.433435+00',
     '2025-02-09 01:09:27.433435+00'

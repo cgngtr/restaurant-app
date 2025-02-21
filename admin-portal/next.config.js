@@ -30,6 +30,9 @@ const nextConfig = {
       topLevelAwait: true,
     }
 
+    // Modülleri admin-portal/node_modules'dan oku
+    config.resolve.modules = ['admin-portal/node_modules', 'node_modules', ...config.resolve.modules];
+
     return config
   },
   // Development settings
@@ -40,9 +43,8 @@ const nextConfig = {
     pagesBufferLength: 5,
   },
   experimental: {
-    serverActions: {
-      bodySizeLimit: '2mb'
-    }
+    serverActions: true,
+    externalDir: true, // Allows importing from outside the admin-portal directory
   }
 }
 
