@@ -173,10 +173,12 @@ export function EditableSidebar() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const { logout, restaurant } = useRestaurant()
   const { navigation, loading, updateNavigationItem, createNavigationItem, deleteNavigationItem, reorderNavigationItems } = useNavigation()
+  const [navigationState, setNavigation] = useState(navigation)
 
   useEffect(() => {
+    setNavigation(navigation)
     setMounted(true)
-  }, [])
+  }, [navigation])
 
   const handleLogout = async () => {
     if (isLoggingOut) return
@@ -196,31 +198,37 @@ export function EditableSidebar() {
   }
 
   const handleDragEnd = async (result: any) => {
-    if (!result.destination) return
+    if (!result.destination) return;
 
-    const items = Array.from(navigation)
-    const [reorderedItem] = items.splice(result.source.index, 1)
-    items.splice(result.destination.index, 0, reorderedItem)
+    const items = Array.from(navigationState);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    // Geçici durumu güncelle
+    setNavigation(items);
 
     const updates = items.map((item, index) => ({
-      id: item.id,
-      sort_order: index
-    }))
+        id: item.id,
+        sort_order: index
+    }));
 
+    // Asenkron güncellemeyi yap
     try {
-      await reorderNavigationItems(updates)
-      toast({
-        title: 'Navigation updated',
-        description: 'The navigation order has been updated successfully.'
-      })
+        await reorderNavigationItems(updates);
+        toast({
+            title: 'Navigation updated',
+            description: 'The navigation order has been updated successfully.'
+        });
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update navigation order.',
-        variant: 'destructive'
-      })
+        toast({
+            title: 'Error',
+            description: 'Failed to update navigation order.',
+            variant: 'destructive'
+        });
+        // Hata durumunda durumu geri al
+        setNavigation(navigationState);
     }
-  }
+  };
 
   const handleEdit = (item: NavigationItemWithChildren) => {
     setEditingItem(item)
@@ -269,8 +277,8 @@ export function EditableSidebar() {
     }
   }
 
-  if (!mounted) {
-    return null
+  if (!mounted || !navigationState.length) {
+    return <div>Loading...</div>;
   }
 
   return (
@@ -306,7 +314,7 @@ export function EditableSidebar() {
                 ref={provided.innerRef}
                 {...provided.droppableProps}
               >
-                {navigation.map((item, index) => (
+                {navigationState.map((item, index) => (
                   <Draggable
                     key={item.id}
                     draggableId={item.id}
