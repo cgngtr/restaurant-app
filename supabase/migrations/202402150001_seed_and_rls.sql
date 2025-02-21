@@ -523,7 +523,8 @@ VALUES
     ('d1a2b3c4-e5f6-4a5b-9c8d-1a2b3c4d5e6f', '2f3c2e2e-6166-4f32-a0d9-6083548cac83', 'Dashboard', '/dashboard', 'LayoutDashboard', 1, true),
     ('e2b3c4d5-f6a7-5b6c-0d9e-2b3c4d5e6f7a', '2f3c2e2e-6166-4f32-a0d9-6083548cac83', 'Menu', '/menu', 'MenuIcon', 2, true),
     ('f3c4d5e6-a7b8-6c7d-1e2f-3c4d5e6f7a8b', '2f3c2e2e-6166-4f32-a0d9-6083548cac83', 'Tables', '/tables', 'Table2', 3, true),
-    ('a4d5e6f7-b8c9-7d8e-2f3a-4d5e6f7a8b9c', '2f3c2e2e-6166-4f32-a0d9-6083548cac83', 'Orders', '/orders', 'ClipboardList', 4, true);
+    ('a4d5e6f7-b8c9-7d8e-2f3a-4d5e6f7a8b9c', '2f3c2e2e-6166-4f32-a0d9-6083548cac83', 'Orders', '/orders', 'ClipboardList', 4, true),
+    ('f4e5d6c7-b9a0-9f0e-4b5c-7f8e9d0c1b2a', '2f3c2e2e-6166-4f32-a0d9-6083548cac83', 'Staff', '/staff', 'Users', 5, true);
 
 -- Insert Stock management with children
 WITH stock_parent AS (

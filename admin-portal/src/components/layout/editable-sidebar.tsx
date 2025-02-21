@@ -23,7 +23,8 @@ import {
   Pencil,
   X,
   Eye,
-  EyeOff
+  EyeOff,
+  Users
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -48,8 +49,20 @@ const ICON_MAP: Record<string, any> = {
   Package,
   FolderTree,
   Building2,
-  Calculator
+  Calculator,
+  Users
 }
+
+const DEFAULT_NAVIGATION = [
+  {
+    id: 'staff',
+    name: 'Staff',
+    href: '/staff',
+    icon: 'Users',
+    is_visible: true,
+    sort_order: 8
+  }
+]
 
 interface NavLinkProps {
   href: string
@@ -471,4 +484,4 @@ export function EditableSidebar() {
       />
     </div>
   )
-} 
+}
